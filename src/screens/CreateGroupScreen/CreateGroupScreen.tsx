@@ -6,16 +6,17 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/color';
 import Realm from 'realm';
 import { useRealm } from '../../realm/RealmContext';
+import { useAlert } from '../../components/AlertProvider';
 
 export default function CreateGroupScreen() {
   const realm = useRealm();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const [groupName, setGroupName] = useState('');
   const [members, setMembers] = useState<string[]>([]);
   const [memberInput, setMemberInput] = useState('');
@@ -24,7 +25,7 @@ export default function CreateGroupScreen() {
     const trimmed = memberInput.trim();
     if (!trimmed) return;
     if (members.map(m => m.toLowerCase()).includes(trimmed.toLowerCase())) {
-      Alert.alert('Duplicate', `"${trimmed}" is already added.`);
+      showAlert({ title: 'Duplicate', message: `"${trimmed}" is already added.` });
       return;
     }
     setMembers([...members, trimmed]);
@@ -38,7 +39,7 @@ export default function CreateGroupScreen() {
   const createGroup = useCallback(async () => {
     const trimmedName = groupName.trim();
     if (!trimmedName) {
-      Alert.alert('Missing name', 'Please enter a group name.');
+      showAlert({ title: 'Missing name', message: 'Please enter a group name.' });
       return;
     }
 
@@ -63,9 +64,9 @@ export default function CreateGroupScreen() {
 
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Could not create group. Please try again.');
+      showAlert({ title: 'Error', message: 'Could not create group. Please try again.' });
     }
-  }, [groupName, members, navigation, realm]);
+  }, [groupName, members, navigation, realm, showAlert]);
 
   return (
     <View style={styles.container}>

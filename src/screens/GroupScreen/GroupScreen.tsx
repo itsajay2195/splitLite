@@ -3,14 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
+  Linking,
+  ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import Realm from 'realm';
 import { colors } from '../../theme/color';
 import { calculateBalances } from '../../utils/balanceCalculator';
+import { simplifyDebts } from '../../utils/debtSimplifier';
 import { useRealm } from '../../realm/RealmContext';
 
 export default function GroupScreen() {
@@ -23,6 +25,7 @@ export default function GroupScreen() {
   const [members, setMembers] = useState<any[]>([]);
   const [balances, setBalances] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [settlements, setSettlements] = useState<any[]>([]);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
@@ -32,17 +35,22 @@ export default function GroupScreen() {
     const expenseResults = realm.objects('Expense').filtered('groupId == $0', objectId);
     const splitResults = realm.objects('ExpenseSplit');
 
-    setGroup(groupData);
-    setMembers([...memberResults]);
-    setExpenses([...expenseResults].sort((a, b) => b.date - a.date));
-    setBalances(calculateBalances(memberResults, expenseResults, splitResults));
-
-    const onExpenseChange = () => {
+    const refresh = () => {
+      const newBalances = calculateBalances(memberResults, expenseResults, splitResults);
+      setBalances(newBalances);
+      setSettlements(
+        simplifyDebts(
+          newBalances.map(b => ({ memberId: b.memberId, name: b.name, net: b.netBalance })),
+        ),
+      );
       setExpenses([...expenseResults].sort((a, b) => b.date - a.date));
-      setBalances(calculateBalances(memberResults, expenseResults, splitResults));
     };
 
-    expenseResults.addListener(onExpenseChange);
+    setGroup(groupData);
+    setMembers([...memberResults]);
+    refresh();
+
+    expenseResults.addListener(refresh);
 
     return () => {
       expenseResults.removeAllListeners();
@@ -56,91 +64,150 @@ export default function GroupScreen() {
     return member ? member.name : 'Unknown';
   };
 
+  const getMember = (memberId: string) =>
+    members.find(m => m._id.toHexString() === memberId);
+
+  const handleUpiPay = (settlement: any) => {
+    const toMember = getMember(settlement.to);
+    if (!toMember?.upiId) return;
+
+    const upiUrl =
+      `upi://pay?pa=${encodeURIComponent(toMember.upiId)}` +
+      `&pn=${encodeURIComponent(toMember.name)}` +
+      `&am=${settlement.amount.toFixed(2)}` +
+      `&cu=INR` +
+      `&tn=${encodeURIComponent('SplitLite settlement')}`;
+
+    Linking.openURL(upiUrl).catch(() => {});
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Groups</Text>
-        </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.back}>← Groups</Text>
+          </TouchableOpacity>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.title}>{group.name}</Text>
+              <Text style={styles.subtitle}>
+                {members.length} {members.length === 1 ? 'member' : 'members'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.qrBtn}
+              onPress={() => navigation.navigate('ShareGroup', { groupId })}
+            >
+              <Text style={styles.qrBtnText}>⬡ Share</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        <Text style={styles.title}>{group.name}</Text>
-        <Text style={styles.subtitle}>{members.length} {members.length === 1 ? 'member' : 'members'}</Text>
-      </View>
+        {/* Members Row */}
+        <View style={styles.membersRow}>
+          {members.map(member => (
+            <View key={member._id.toHexString()} style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {member.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-      <FlatList
-        data={[]}
-        keyExtractor={() => ''}
-        renderItem={null}
-        ListHeaderComponent={
+        {/* Balances */}
+        <Text style={styles.sectionTitle}>Balances</Text>
+        <View style={styles.section}>
+          {balances.map(bal => (
+            <View key={bal.memberId} style={styles.balanceCard}>
+              <Text style={styles.balanceName}>{bal.name}</Text>
+              <Text
+                style={[
+                  styles.balanceAmount,
+                  {
+                    color:
+                      bal.netBalance > 0
+                        ? colors.accent
+                        : bal.netBalance < 0
+                        ? colors.danger
+                        : colors.text2,
+                  },
+                ]}
+              >
+                {bal.netBalance > 0
+                  ? `Gets ₹${bal.netBalance.toFixed(2)}`
+                  : bal.netBalance < 0
+                  ? `Owes ₹${Math.abs(bal.netBalance).toFixed(2)}`
+                  : 'Settled'}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Settlement Suggestions */}
+        {settlements.length > 0 && (
           <>
-            {/* Members Row */}
-            <View style={styles.membersRow}>
-              {members.map(member => (
-                <View key={member._id.toHexString()} style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {member.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Balances */}
+            <Text style={styles.sectionTitle}>Settle Up</Text>
             <View style={styles.section}>
-              {balances.map(bal => (
-                <View key={bal.memberId} style={styles.balanceCard}>
-                  <Text style={styles.balanceName}>{bal.name}</Text>
-                  <Text
-                    style={{
-                      color:
-                        bal.netBalance > 0
-                          ? colors.accent
-                          : bal.netBalance < 0
-                          ? colors.danger
-                          : colors.text2,
-                      fontWeight: '600',
-                    }}
-                  >
-                    {bal.netBalance > 0
-                      ? `Gets ₹${bal.netBalance.toFixed(2)}`
-                      : bal.netBalance < 0
-                      ? `Owes ₹${Math.abs(bal.netBalance).toFixed(2)}`
-                      : 'Settled'}
-                  </Text>
-                </View>
-              ))}
+              {settlements.map((s, i) => {
+                const toMember = getMember(s.to);
+                const hasUpi = !!toMember?.upiId;
+                return (
+                  <View key={i} style={styles.settlementCard}>
+                    <View style={styles.settlementLeft}>
+                      <Text style={styles.settlementText}>
+                        <Text style={{ color: colors.danger }}>{s.fromName}</Text>
+                        <Text style={{ color: colors.text2 }}> pays </Text>
+                        <Text style={{ color: colors.accent }}>{s.toName}</Text>
+                      </Text>
+                      <Text style={styles.settlementAmount}>₹{s.amount.toFixed(2)}</Text>
+                    </View>
+                    {hasUpi && (
+                      <TouchableOpacity
+                        style={styles.upiBtn}
+                        onPress={() => handleUpiPay(s)}
+                      >
+                        <Text style={styles.upiBtnText}>Pay via UPI</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
             </View>
-
-            {/* Expenses Header */}
-            <Text style={styles.sectionTitle}>
-              Expenses {expenses.length > 0 ? `(${expenses.length})` : ''}
-            </Text>
           </>
-        }
-        ListEmptyComponent={
+        )}
+
+        {/* Expenses */}
+        <Text style={styles.sectionTitle}>
+          Expenses{expenses.length > 0 ? ` (${expenses.length})` : ''}
+        </Text>
+
+        {expenses.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No expenses yet</Text>
           </View>
-        }
-      />
-
-      {/* Expense List */}
-      {expenses.map(expense => (
-        <View key={expense._id.toHexString()} style={styles.expenseCard}>
-          <View style={styles.expenseLeft}>
-            <Text style={styles.expenseDesc}>
-              {expense.description || 'Expense'}
-            </Text>
-            <Text style={styles.expenseMeta}>
-              Paid by {getMemberName(expense.paidByMemberId)} ·{' '}
-              {new Date(expense.date).toLocaleDateString()}
-            </Text>
+        ) : (
+          <View style={styles.section}>
+            {expenses.map(expense => (
+              <View key={expense._id.toHexString()} style={styles.expenseCard}>
+                <View style={styles.expenseLeft}>
+                  <Text style={styles.expenseDesc}>
+                    {expense.description || 'Expense'}
+                  </Text>
+                  <Text style={styles.expenseMeta}>
+                    Paid by {getMemberName(expense.paidByMemberId)} ·{' '}
+                    {new Date(expense.date).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text style={styles.expenseAmount}>₹{expense.amount.toFixed(2)}</Text>
+              </View>
+            ))}
           </View>
-          <Text style={styles.expenseAmount}>₹{expense.amount.toFixed(2)}</Text>
-        </View>
-      ))}
+        )}
+      </ScrollView>
 
-      {/* Add Expense Button */}
+      {/* Add Expense Button — always pinned to bottom */}
       <TouchableOpacity
         style={styles.addBtn}
         onPress={() => navigation.navigate('AddExpense', { groupId })}
@@ -157,9 +224,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     paddingTop: 60,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   header: {
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   back: {
     color: colors.text2,
@@ -174,6 +249,20 @@ const styles = StyleSheet.create({
     color: colors.text2,
     fontSize: 12,
     marginTop: 4,
+  },
+  qrBtn: {
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  qrBtnText: {
+    color: colors.text2,
+    fontSize: 13,
+    fontWeight: '600',
   },
   membersRow: {
     flexDirection: 'row',
@@ -195,9 +284,18 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
   },
+  sectionTitle: {
+    color: colors.text2,
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   balanceCard: {
     backgroundColor: colors.surface2,
@@ -214,18 +312,47 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
   },
-  sectionTitle: {
-    color: colors.text2,
-    fontSize: 12,
+  balanceAmount: {
     fontWeight: '600',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+  },
+  settlementCard: {
+    backgroundColor: colors.surface2,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  settlementLeft: {
+    flex: 1,
+  },
+  settlementText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settlementAmount: {
+    color: colors.text,
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '700',
+  },
+  upiBtn: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  upiBtnText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '700',
   },
   expenseCard: {
     backgroundColor: colors.surface2,
-    marginHorizontal: 20,
     padding: 14,
     borderRadius: 12,
     marginBottom: 8,
@@ -257,6 +384,7 @@ const styles = StyleSheet.create({
   emptyState: {
     paddingVertical: 20,
     alignItems: 'center',
+    marginBottom: 24,
   },
   emptyText: {
     color: colors.text3,

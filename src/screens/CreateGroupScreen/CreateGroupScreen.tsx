@@ -13,23 +13,31 @@ import Realm from 'realm';
 import { useRealm } from '../../realm/RealmContext';
 import { useAlert } from '../../components/AlertProvider';
 
+type MemberEntry = {
+  name: string;
+  upiId: string;
+};
+
 export default function CreateGroupScreen() {
   const realm = useRealm();
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
+
   const [groupName, setGroupName] = useState('');
-  const [members, setMembers] = useState<string[]>([]);
+  const [members, setMembers] = useState<MemberEntry[]>([]);
   const [memberInput, setMemberInput] = useState('');
+  const [upiInput, setUpiInput] = useState('');
 
   const addMember = () => {
     const trimmed = memberInput.trim();
     if (!trimmed) return;
-    if (members.map(m => m.toLowerCase()).includes(trimmed.toLowerCase())) {
+    if (members.map(m => m.name.toLowerCase()).includes(trimmed.toLowerCase())) {
       showAlert({ title: 'Duplicate', message: `"${trimmed}" is already added.` });
       return;
     }
-    setMembers([...members, trimmed]);
+    setMembers([...members, { name: trimmed, upiId: upiInput.trim() }]);
     setMemberInput('');
+    setUpiInput('');
   };
 
   const removeMember = (index: number) => {
@@ -53,11 +61,12 @@ export default function CreateGroupScreen() {
           createdAt: new Date(),
         });
 
-        members.forEach(memberName => {
+        members.forEach(member => {
           realm.create('Member', {
             _id: new Realm.BSON.ObjectId(),
             groupId,
-            name: memberName,
+            name: member.name,
+            upiId: member.upiId || undefined,
           });
         });
       });
@@ -80,18 +89,31 @@ export default function CreateGroupScreen() {
         onChangeText={setGroupName}
       />
 
-      <View style={styles.memberRow}>
+      <Text style={styles.label}>Members</Text>
+
+      <TextInput
+        placeholder="Name"
+        placeholderTextColor={colors.text3}
+        style={styles.input}
+        value={memberInput}
+        onChangeText={setMemberInput}
+        returnKeyType="next"
+      />
+
+      <View style={styles.upiRow}>
         <TextInput
-          placeholder="Add member"
+          placeholder="UPI ID (optional, e.g. name@upi)"
           placeholderTextColor={colors.text3}
           style={[styles.input, { flex: 1 }]}
-          value={memberInput}
-          onChangeText={setMemberInput}
+          value={upiInput}
+          onChangeText={setUpiInput}
           onSubmitEditing={addMember}
           returnKeyType="done"
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
         <TouchableOpacity style={styles.addBtn} onPress={addMember}>
-          <Text style={{ color: '#000' }}>+</Text>
+          <Text style={{ color: '#000', fontWeight: '700' }}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -100,9 +122,16 @@ export default function CreateGroupScreen() {
         keyExtractor={(_, index) => index.toString()}
         renderItem={({ item, index }) => (
           <View style={styles.memberChip}>
-            <Text style={{ color: colors.text, flex: 1 }}>{item}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '600' }}>{item.name}</Text>
+              {item.upiId ? (
+                <Text style={{ color: colors.text3, fontSize: 11, marginTop: 2 }}>
+                  {item.upiId}
+                </Text>
+              ) : null}
+            </View>
             <TouchableOpacity onPress={() => removeMember(index)}>
-              <Text style={{ color: colors.text3, fontSize: 16, paddingLeft: 10 }}>×</Text>
+              <Text style={{ color: colors.text3, fontSize: 18, paddingLeft: 12 }}>×</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -128,6 +157,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 20,
   },
+  label: {
+    color: colors.text2,
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
   input: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
@@ -137,24 +174,27 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
   },
-  memberRow: {
+  upiRow: {
     flexDirection: 'row',
     gap: 10,
   },
   addBtn: {
     backgroundColor: colors.accent,
     borderRadius: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     justifyContent: 'center',
+    marginBottom: 12,
   },
   memberChip: {
     backgroundColor: colors.surface,
-    padding: 10,
+    padding: 12,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: 14,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   saveBtn: {
     backgroundColor: colors.accent,

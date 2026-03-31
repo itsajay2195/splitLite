@@ -20,6 +20,7 @@ export class Member extends Realm.Object<Member> {
   _id!: Realm.BSON.ObjectId;
   groupId!: Realm.BSON.ObjectId;
   name!: string;
+  upiId?: string;
 
   static schema: Realm.ObjectSchema = {
     name: 'Member',
@@ -28,6 +29,7 @@ export class Member extends Realm.Object<Member> {
       _id: 'objectId',
       groupId: 'objectId',
       name: 'string',
+      upiId: 'string?',
     },
   };
 }

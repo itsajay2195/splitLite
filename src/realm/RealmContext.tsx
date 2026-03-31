@@ -16,12 +16,11 @@ const RealmContext = createContext<RealmContextType>({ realm: null });
 
 export const RealmProvider = ({ children }: { children: React.ReactNode }) => {
   const [realm, setRealm] = useState<Realm | null>(null);
-  console.log('RealmContext created:', RealmContext);
 
   useEffect(() => {
     const instance = new Realm({
       schema: [Group, Expense, Member, ExpenseSplit],
-      schemaVersion: 1,
+      schemaVersion: 2,
     });
     setRealm(instance);
 

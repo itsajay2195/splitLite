@@ -44,12 +44,20 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Good evening</Text>
         <Text style={styles.title}>My Groups</Text>
 
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('CreateGroup')}
-        >
-          <Text style={styles.addText}>+</Text>
-        </TouchableOpacity>
+        <View style={styles.headerBtns}>
+          <TouchableOpacity
+            style={styles.importBtn}
+            onPress={() => navigation.navigate('ImportGroup')}
+          >
+            <Text style={styles.importText}>⬡</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => navigation.navigate('CreateGroup')}
+          >
+            <Text style={styles.addText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -108,10 +116,28 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
   },
-  addBtn: {
+  headerBtns: {
     position: 'absolute',
     right: 20,
     top: 0,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  importBtn: {
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  importText: {
+    color: colors.text2,
+    fontSize: 18,
+  },
+  addBtn: {
     backgroundColor: colors.accent,
     width: 40,
     height: 40,

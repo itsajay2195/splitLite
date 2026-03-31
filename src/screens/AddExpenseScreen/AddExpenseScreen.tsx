@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Alert,
 } from 'react-native';
 
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -14,11 +13,13 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import Realm from 'realm';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
+import { useAlert } from '../../components/AlertProvider';
 
 export default function AddExpenseScreen() {
   const realm = useRealm();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const { groupId } = route.params;
 
   const [members, setMembers] = useState<any[]>([]);
@@ -39,11 +40,11 @@ export default function AddExpenseScreen() {
     const numericAmount = parseFloat(amount);
 
     if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid amount greater than 0.');
+      showAlert({ title: 'Invalid amount', message: 'Please enter a valid amount greater than 0.' });
       return;
     }
     if (!selectedMember) {
-      Alert.alert('No payer', 'Please select who paid.');
+      showAlert({ title: 'No payer', message: 'Please select who paid.' });
       return;
     }
 
@@ -75,7 +76,7 @@ export default function AddExpenseScreen() {
 
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Could not save expense. Please try again.');
+      showAlert({ title: 'Error', message: 'Could not save expense. Please try again.' });
     }
   };
 

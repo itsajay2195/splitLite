@@ -15,18 +15,34 @@ import { calculateBalances } from '../../utils/balanceCalculator';
 import { simplifyDebts } from '../../utils/debtSimplifier';
 import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
+import { useAlert } from '../../components/AlertProvider';
 
 type SectionData =
   | { type: 'members' }
   | { type: 'balance'; memberId: string; name: string; netBalance: number }
-  | { type: 'settlement'; from: string; fromName: string; to: string; toName: string; amount: number }
-  | { type: 'expense'; _id: any; description: string; paidByMemberId: any; amount: number; date: Date }
+  | {
+      type: 'settlement';
+      from: string;
+      fromName: string;
+      to: string;
+      toName: string;
+      amount: number;
+    }
+  | {
+      type: 'expense';
+      _id: any;
+      description: string;
+      paidByMemberId: any;
+      amount: number;
+      date: Date;
+    }
   | { type: 'empty' };
 
 export default function GroupScreen() {
   const realm = useRealm();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const { showAlert } = useAlert();
   const { groupId } = route.params;
 
   const [group, setGroup] = useState<any>(null);
@@ -39,19 +55,37 @@ export default function GroupScreen() {
     const objectId = new Realm.BSON.ObjectId(groupId);
 
     const groupData = realm.objectForPrimaryKey('Group', objectId);
-    const memberResults = realm.objects('Member').filtered('groupId == $0', objectId);
-    const expenseResults = realm.objects('Expense').filtered('groupId == $0', objectId);
+    const memberResults = realm
+      .objects('Member')
+      .filtered('groupId == $0', objectId);
+    const expenseResults = realm
+      .objects('Expense')
+      .filtered('groupId == $0', objectId);
     const splitResults = realm.objects('ExpenseSplit');
+    const paymentResults = realm
+      .objects('Payment')
+      .filtered('groupId == $0', objectId);
 
     const refresh = () => {
-      const newBalances = calculateBalances(memberResults, expenseResults, splitResults);
+      const newBalances = calculateBalances(
+        memberResults,
+        expenseResults,
+        splitResults,
+        paymentResults,
+      );
       setBalances(newBalances);
       setSettlements(
         simplifyDebts(
-          newBalances.map(b => ({ memberId: b.memberId, name: b.name, net: b.netBalance })),
+          newBalances.map(b => ({
+            memberId: b.memberId,
+            name: b.name,
+            net: b.netBalance,
+          })),
         ),
       );
-      setExpenses([...expenseResults].sort((a: any, b: any) => b.date - a.date));
+      setExpenses(
+        [...expenseResults].sort((a: any, b: any) => b.date - a.date),
+      );
     };
 
     setGroup(groupData);
@@ -59,14 +93,46 @@ export default function GroupScreen() {
     refresh();
 
     expenseResults.addListener(refresh);
+    paymentResults.addListener(refresh);
 
     return () => {
       expenseResults.removeAllListeners();
+      paymentResults.removeAllListeners();
     };
   }, [groupId, realm]);
 
+  const markPaid = (settlement: any) => {
+    showAlert({
+      title: 'Mark as Paid?',
+      message: `Record that ${settlement.fromName} paid ${
+        settlement.toName
+      } ₹${settlement.amount.toFixed(2)}?`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark Paid',
+          style: 'default',
+          onPress: () => {
+            realm.write(() => {
+              realm.create('Payment', {
+                _id: new Realm.BSON.ObjectId(),
+                groupId: new Realm.BSON.ObjectId(groupId),
+                fromMemberId: new Realm.BSON.ObjectId(settlement.from),
+                toMemberId: new Realm.BSON.ObjectId(settlement.to),
+                amount: settlement.amount,
+                date: new Date(),
+              });
+            });
+          },
+        },
+      ],
+    });
+  };
+
   const getMemberName = (memberId: Realm.BSON.ObjectId) => {
-    const member = members.find(m => m._id.toHexString() === memberId.toHexString());
+    const member = members.find(
+      m => m._id.toHexString() === memberId.toHexString(),
+    );
     return member ? member.name : 'Unknown';
   };
 
@@ -89,7 +155,7 @@ export default function GroupScreen() {
     const result: { key: string; title: string; data: SectionData[] }[] = [
       {
         key: 'members',
-        title: '',
+        title: 'Members',
         data: [{ type: 'members' }],
       },
       {
@@ -110,9 +176,10 @@ export default function GroupScreen() {
     result.push({
       key: 'expenses',
       title: `Expenses${expenses.length > 0 ? ` (${expenses.length})` : ''}`,
-      data: expenses.length > 0
-        ? expenses.map(e => ({ type: 'expense' as const, ...e }))
-        : [{ type: 'empty' as const }],
+      data:
+        expenses.length > 0
+          ? expenses.map(e => ({ type: 'expense' as const, ...e }))
+          : [{ type: 'empty' as const }],
     });
 
     return result;
@@ -124,7 +191,7 @@ export default function GroupScreen() {
     if (item.type === 'members') {
       return (
         <View style={styles.membersSection}>
-          <Text style={styles.sectionTitle}>Members</Text>
+          {/* <Text style={styles.sectionTitle}>Members</Text> */}
           <View style={styles.membersRow}>
             {members.map(member => (
               <View key={member._id.toHexString()} style={styles.memberItem}>
@@ -152,19 +219,19 @@ export default function GroupScreen() {
               styles.balanceAmount,
               {
                 color:
-                  item.netBalance > 0
+                  Math.abs(item.netBalance) <= 0.01
+                    ? colors.text2
+                    : item.netBalance > 0
                     ? colors.accent
-                    : item.netBalance < 0
-                    ? colors.danger
-                    : colors.text2,
+                    : colors.danger,
               },
             ]}
           >
-            {item.netBalance > 0
+            {Math.abs(item.netBalance) <= 0.01
+              ? 'Settled'
+              : item.netBalance > 0
               ? `Gets ₹${item.netBalance.toFixed(2)}`
-              : item.netBalance < 0
-              ? `Owes ₹${Math.abs(item.netBalance).toFixed(2)}`
-              : 'Settled'}
+              : `Owes ₹${Math.abs(item.netBalance).toFixed(2)}`}
           </Text>
         </View>
       );
@@ -181,13 +248,26 @@ export default function GroupScreen() {
               <Text style={{ color: colors.text2 }}> pays </Text>
               <Text style={{ color: colors.accent }}>{item.toName}</Text>
             </Text>
-            <Text style={styles.settlementAmount}>₹{item.amount.toFixed(2)}</Text>
+            <Text style={styles.settlementAmount}>
+              ₹{item.amount.toFixed(2)}
+            </Text>
           </View>
-          {hasUpi && (
-            <TouchableOpacity style={styles.upiBtn} onPress={() => handleUpiPay(item)}>
-              <Text style={styles.upiBtnText}>Pay via UPI</Text>
+          <View style={styles.settlementActions}>
+            {hasUpi && (
+              <TouchableOpacity
+                style={styles.upiBtn}
+                onPress={() => handleUpiPay(item)}
+              >
+                <Text style={styles.upiBtnText}>Pay via UPI</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.markPaidBtn}
+              onPress={() => markPaid(item)}
+            >
+              <Text style={styles.markPaidText}>Mark Paid</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
       );
     }
@@ -196,7 +276,9 @@ export default function GroupScreen() {
       return (
         <View style={styles.expenseCard}>
           <View style={styles.expenseLeft}>
-            <Text style={styles.expenseDesc}>{item.description || 'Expense'}</Text>
+            <Text style={styles.expenseDesc}>
+              {item.description || 'Expense'}
+            </Text>
             <Text style={styles.expenseMeta}>
               Paid by {getMemberName(item.paidByMemberId)} ·{' '}
               {new Date(item.date).toLocaleDateString()}
@@ -222,11 +304,15 @@ export default function GroupScreen() {
     <View style={styles.container}>
       <ScreenHeader
         title={group.name}
-        subtitle={`${members.length} ${members.length === 1 ? 'member' : 'members'}`}
+        subtitle={`${members.length} ${
+          members.length === 1 ? 'member' : 'members'
+        }`}
         backLabel="Groups"
         onBack={() => navigation.goBack()}
         right={
-          <TouchableOpacity onPress={() => navigation.navigate('ShareGroup', { groupId })}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ShareGroup', { groupId })}
+          >
             <Text style={styles.shareBtn}>⬡ Share</Text>
           </TouchableOpacity>
         }
@@ -234,7 +320,9 @@ export default function GroupScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item, index) =>
-          item.type === 'expense' ? item._id.toHexString() : `${item.type}-${index}`
+          item.type === 'expense'
+            ? item._id.toHexString()
+            : `${item.type}-${index}`
         }
         renderItem={renderItem}
         renderSectionHeader={({ section }) =>
@@ -361,12 +449,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '700',
   },
+  settlementActions: {
+    flexDirection: 'column',
+    gap: 6,
+    alignItems: 'flex-end',
+  },
   upiBtn: {
     backgroundColor: colors.accent,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    marginLeft: 10,
+  },
+  markPaidBtn: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  markPaidText: {
+    color: colors.text2,
+    fontSize: 12,
+    fontWeight: '600',
   },
   upiBtnText: {
     color: '#000',

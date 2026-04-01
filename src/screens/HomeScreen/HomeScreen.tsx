@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
+import { calculateBalances } from '../../utils/balanceCalculator';
 
 export default function HomeScreen() {
   const realm = useRealm();
@@ -20,24 +21,30 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const results = realm.objects('Group');
-
-    const update = () => {
-      setGroups([...results]);
-    };
-
+    const payments = realm.objects('Payment');
+    const update = () => setGroups([...results]);
     update();
     results.addListener(update);
-
+    payments.addListener(update);
     return () => {
       results.removeAllListeners();
+      payments.removeAllListeners();
     };
   }, [realm]);
 
   const getMeta = (groupId: any) => {
-    const memberCount = realm.objects('Member').filtered('groupId == $0', groupId).length;
-    const expenses = realm.objects('Expense').filtered('groupId == $0', groupId);
-    const totalSpent = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
-    return { memberCount, totalSpent };
+    const memberResults = realm.objects('Member').filtered('groupId == $0', groupId);
+    const expenseResults = realm.objects('Expense').filtered('groupId == $0', groupId);
+    const splitResults = realm.objects('ExpenseSplit');
+    const paymentResults = realm.objects('Payment').filtered('groupId == $0', groupId);
+
+    const totalSpent = expenseResults.reduce((sum: number, e: any) => sum + e.amount, 0);
+
+    // Group is settled if all net balances are within rounding tolerance
+    const balances = calculateBalances(memberResults, expenseResults, splitResults, paymentResults);
+    const isSettled = balances.every(b => Math.abs(b.netBalance) <= 0.01);
+
+    return { memberCount: memberResults.length, totalSpent, isSettled };
   };
 
   return (
@@ -72,7 +79,7 @@ export default function HomeScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const { memberCount, totalSpent } = getMeta(item._id);
+          const { memberCount, totalSpent, isSettled } = getMeta(item._id);
           return (
             <TouchableOpacity
               style={styles.groupCard}
@@ -80,16 +87,18 @@ export default function HomeScreen() {
                 navigation.navigate('Group', { groupId: item._id.toHexString() })
               }
             >
-              <View>
+              <View style={styles.cardLeft}>
                 <Text style={styles.groupName}>{item.name}</Text>
                 <Text style={styles.groupMeta}>
-                  {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                  {memberCount} {memberCount === 1 ? 'member' : 'members'} · ₹{totalSpent.toFixed(0)} spent
                 </Text>
               </View>
 
-              <Text style={[styles.balance, { color: colors.text2 }]}>
-                ₹{totalSpent.toFixed(0)} spent
-              </Text>
+              <View style={[styles.badge, isSettled ? styles.badgeSettled : styles.badgePending]}>
+                <Text style={[styles.badgeText, isSettled ? styles.badgeTextSettled : styles.badgeTextPending]}>
+                  {isSettled ? 'Settled' : 'Pending'}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         }}
@@ -161,6 +170,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  cardLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
   groupName: {
     color: colors.text,
     fontSize: 16,
@@ -171,9 +184,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  balance: {
-    fontSize: 14,
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  badgeSettled: {
+    backgroundColor: 'rgba(0,229,160,0.1)',
+    borderColor: colors.accent,
+  },
+  badgePending: {
+    backgroundColor: 'rgba(255,74,107,0.1)',
+    borderColor: colors.danger,
+  },
+  badgeText: {
+    fontSize: 12,
     fontWeight: '600',
+  },
+  badgeTextSettled: {
+    color: colors.accent,
+  },
+  badgeTextPending: {
+    color: colors.danger,
   },
   emptyState: {
     paddingTop: 60,

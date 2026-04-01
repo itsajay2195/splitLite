@@ -56,6 +56,28 @@ export class Expense extends Realm.Object<Expense> {
   };
 }
 
+export class Payment extends Realm.Object<Payment> {
+  _id!: Realm.BSON.ObjectId;
+  groupId!: Realm.BSON.ObjectId;
+  fromMemberId!: Realm.BSON.ObjectId;
+  toMemberId!: Realm.BSON.ObjectId;
+  amount!: number;
+  date!: Date;
+
+  static schema: Realm.ObjectSchema = {
+    name: 'Payment',
+    primaryKey: '_id',
+    properties: {
+      _id: 'objectId',
+      groupId: 'objectId',
+      fromMemberId: 'objectId',
+      toMemberId: 'objectId',
+      amount: 'double',
+      date: 'date',
+    },
+  };
+}
+
 export class ExpenseSplit extends Realm.Object<ExpenseSplit> {
   _id!: Realm.BSON.ObjectId;
   expenseId!: Realm.BSON.ObjectId;

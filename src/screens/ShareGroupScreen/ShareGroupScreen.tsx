@@ -51,7 +51,7 @@ export default function ShareGroupScreen() {
       };
 
       const json = JSON.stringify(payload);
-      if (new TextEncoder().encode(json).length > MAX_QR_BYTES) {
+      if (encodeURIComponent(json).replace(/%[0-9A-F]{2}/gi, '_').length > MAX_QR_BYTES) {
         setError(`Group data is too large for a single QR code (${[...expenses].length} expenses). Try exporting a smaller group.`);
         return;
       }

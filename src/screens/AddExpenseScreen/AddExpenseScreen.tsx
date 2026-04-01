@@ -49,7 +49,8 @@ export default function AddExpenseScreen() {
     const expenseId = new Realm.BSON.ObjectId();
     const groupObjectId = new Realm.BSON.ObjectId(groupId);
     const paidById = new Realm.BSON.ObjectId(selectedMember);
-    const splitAmount = numericAmount / members.length;
+    const baseAmount = Math.floor((numericAmount / members.length) * 100) / 100;
+    const remainder = Math.round((numericAmount - baseAmount * members.length) * 100) / 100;
 
     try {
       realm.write(() => {
@@ -61,12 +62,12 @@ export default function AddExpenseScreen() {
           description: description.trim(),
           date: new Date(),
         });
-        members.forEach(member => {
+        members.forEach((member, index) => {
           realm.create('ExpenseSplit', {
             _id: new Realm.BSON.ObjectId(),
             expenseId,
             memberId: member._id,
-            amount: splitAmount,
+            amount: index === members.length - 1 ? baseAmount + remainder : baseAmount,
           });
         });
       });

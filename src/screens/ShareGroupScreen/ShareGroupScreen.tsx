@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
   ActivityIndicator,
 } from 'react-native';
@@ -12,6 +11,7 @@ import Realm from 'realm';
 import QRCode from 'react-native-qrcode-svg';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
+import ScreenHeader from '../../components/ScreenHeader';
 
 const MAX_QR_BYTES = 2800;
 
@@ -28,62 +28,33 @@ export default function ShareGroupScreen() {
   useEffect(() => {
     try {
       const objectId = new Realm.BSON.ObjectId(groupId);
-
       const group = realm.objectForPrimaryKey('Group', objectId);
       const members = realm.objects('Member').filtered('groupId == $0', objectId);
       const expenses = realm.objects('Expense').filtered('groupId == $0', objectId);
       const splits = realm.objects('ExpenseSplit');
 
-      if (!group) {
-        setError('Group not found.');
-        return;
-      }
+      if (!group) { setError('Group not found.'); return; }
 
       setGroupName((group as any).name);
 
-      const expenseIds = new Set(
-        [...expenses].map(e => (e as any)._id.toHexString()),
-      );
-
+      const expenseIds = new Set([...expenses].map(e => (e as any)._id.toHexString()));
       const relevantSplits = [...splits].filter(s =>
         expenseIds.has((s as any).expenseId.toHexString()),
       );
 
       const payload = {
         v: 1,
-        group: {
-          id: groupId,
-          name: (group as any).name,
-          createdAt: (group as any).createdAt.toISOString(),
-        },
-        members: [...members].map((m: any) => ({
-          id: m._id.toHexString(),
-          name: m.name,
-          upiId: m.upiId ?? null,
-        })),
-        expenses: [...expenses].map((e: any) => ({
-          id: e._id.toHexString(),
-          amount: e.amount,
-          paidBy: e.paidByMemberId.toHexString(),
-          desc: e.description,
-          date: e.date.toISOString(),
-        })),
-        splits: relevantSplits.map((s: any) => ({
-          expenseId: s.expenseId.toHexString(),
-          memberId: s.memberId.toHexString(),
-          amount: s.amount,
-        })),
+        group: { id: groupId, name: (group as any).name, createdAt: (group as any).createdAt.toISOString() },
+        members: [...members].map((m: any) => ({ id: m._id.toHexString(), name: m.name, upiId: m.upiId ?? null })),
+        expenses: [...expenses].map((e: any) => ({ id: e._id.toHexString(), amount: e.amount, paidBy: e.paidByMemberId.toHexString(), desc: e.description, date: e.date.toISOString() })),
+        splits: relevantSplits.map((s: any) => ({ expenseId: s.expenseId.toHexString(), memberId: s.memberId.toHexString(), amount: s.amount })),
       };
 
       const json = JSON.stringify(payload);
-
       if (new TextEncoder().encode(json).length > MAX_QR_BYTES) {
-        setError(
-          `Group data is too large for a single QR code (${[...expenses].length} expenses). Try exporting a smaller group.`,
-        );
+        setError(`Group data is too large for a single QR code (${[...expenses].length} expenses). Try exporting a smaller group.`);
         return;
       }
-
       setQrData(json);
     } catch {
       setError('Could not generate QR code.');
@@ -91,55 +62,53 @@ export default function ShareGroupScreen() {
   }, [groupId, realm]);
 
   return (
-    <FlatList
-      data={[]}
-      keyExtractor={() => ''}
-      renderItem={null}
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      ListHeaderComponent={
-        <>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.back}>← Back</Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="Share Group"
+        subtitle={groupName || undefined}
+        backLabel={groupName || 'Back'}
+        onBack={() => navigation.goBack()}
+      />
 
-          <Text style={styles.title}>Share Group</Text>
-          {groupName ? <Text style={styles.subtitle}>{groupName}</Text> : null}
+      <FlatList
+        data={[]}
+        keyExtractor={() => ''}
+        renderItem={null}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={
+          <>
+            {!qrData && !error && (
+              <ActivityIndicator color={colors.accent} style={styles.loader} />
+            )}
 
-          {!qrData && !error && (
-            <ActivityIndicator color={colors.accent} style={styles.loader} />
-          )}
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {qrData && (
-            <>
-              <View style={styles.qrWrapper}>
-                <QRCode
-                  value={qrData}
-                  size={240}
-                  backgroundColor={colors.surface2}
-                  color={colors.text}
-                />
+            {error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
               </View>
+            )}
 
-              <View style={styles.infoBox}>
-                <Text style={styles.infoTitle}>How to use</Text>
-                <Text style={styles.infoText}>
-                  Let a friend scan this QR code in their SplitLite app to
-                  import the full group — members, expenses, and balances —
-                  with no internet required.
-                </Text>
-              </View>
-            </>
-          )}
-        </>
-      }
-    />
+            {qrData && (
+              <>
+                <View style={styles.qrWrapper}>
+                  <QRCode
+                    value={qrData}
+                    size={240}
+                    backgroundColor={colors.surface2}
+                    color={colors.text}
+                  />
+                </View>
+                <View style={styles.infoBox}>
+                  <Text style={styles.infoTitle}>How to use</Text>
+                  <Text style={styles.infoText}>
+                    Let a friend scan this QR code in their SplitLite app to import the full group — members, expenses, and balances — with no internet required.
+                  </Text>
+                </View>
+              </>
+            )}
+          </>
+        }
+      />
+    </View>
   );
 }
 
@@ -150,24 +119,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingTop: 60,
     alignItems: 'center',
-  },
-  back: {
-    color: colors.text2,
-    alignSelf: 'flex-start',
-    marginBottom: 20,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  subtitle: {
-    color: colors.text2,
-    fontSize: 14,
-    marginBottom: 32,
   },
   loader: {
     marginTop: 40,
@@ -179,6 +131,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 32,
+    marginTop: 20,
   },
   infoBox: {
     backgroundColor: colors.surface2,

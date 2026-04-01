@@ -12,6 +12,7 @@ import { colors } from '../../theme/color';
 import Realm from 'realm';
 import { useRealm } from '../../realm/RealmContext';
 import { useAlert } from '../../components/AlertProvider';
+import ScreenHeader from '../../components/ScreenHeader';
 
 type MemberEntry = {
   name: string;
@@ -79,8 +80,9 @@ export default function CreateGroupScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>New Group</Text>
+      <ScreenHeader title="New Group" backLabel="Groups" onBack={() => navigation.goBack()} />
 
+      <View style={styles.form}>
       <TextInput
         placeholder="Group name"
         placeholderTextColor={colors.text3}
@@ -140,6 +142,7 @@ export default function CreateGroupScreen() {
       <TouchableOpacity style={styles.saveBtn} onPress={createGroup}>
         <Text style={styles.saveText}>Create Group</Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -148,14 +151,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    padding: 20,
-    paddingTop: 60,
   },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 20,
+  form: {
+    flex: 1,
+    padding: 20,
   },
   label: {
     color: colors.text2,

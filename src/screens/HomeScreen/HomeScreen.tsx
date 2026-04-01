@@ -8,12 +8,14 @@ import {
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 
 export default function HomeScreen() {
   const realm = useRealm();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState<any[]>([]);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
       <View style={styles.header}>
         <Text style={styles.subtitle}>Good evening</Text>
         <Text style={styles.title}>My Groups</Text>
@@ -100,7 +102,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingTop: 60,
   },
   header: {
     paddingHorizontal: 20,

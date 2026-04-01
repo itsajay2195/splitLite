@@ -14,6 +14,7 @@ import { colors } from '../../theme/color';
 import { calculateBalances } from '../../utils/balanceCalculator';
 import { simplifyDebts } from '../../utils/debtSimplifier';
 import { useRealm } from '../../realm/RealmContext';
+import ScreenHeader from '../../components/ScreenHeader';
 
 type SectionData =
   | { type: 'members' }
@@ -122,14 +123,22 @@ export default function GroupScreen() {
   const renderItem = ({ item }: { item: SectionData }) => {
     if (item.type === 'members') {
       return (
-        <View style={styles.membersRow}>
-          {members.map(member => (
-            <View key={member._id.toHexString()} style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {member.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          ))}
+        <View style={styles.membersSection}>
+          <Text style={styles.sectionTitle}>Members</Text>
+          <View style={styles.membersRow}>
+            {members.map(member => (
+              <View key={member._id.toHexString()} style={styles.memberItem}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {member.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {member.name}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       );
     }
@@ -211,6 +220,17 @@ export default function GroupScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader
+        title={group.name}
+        subtitle={`${members.length} ${members.length === 1 ? 'member' : 'members'}`}
+        backLabel="Groups"
+        onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity onPress={() => navigation.navigate('ShareGroup', { groupId })}>
+            <Text style={styles.shareBtn}>⬡ Share</Text>
+          </TouchableOpacity>
+        }
+      />
       <SectionList
         sections={sections}
         keyExtractor={(item, index) =>
@@ -221,27 +241,6 @@ export default function GroupScreen() {
           section.title ? (
             <Text style={styles.sectionTitle}>{section.title}</Text>
           ) : null
-        }
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.back}>← Groups</Text>
-            </TouchableOpacity>
-            <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.title}>{group.name}</Text>
-                <Text style={styles.subtitle}>
-                  {members.length} {members.length === 1 ? 'member' : 'members'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.qrBtn}
-                onPress={() => navigation.navigate('ShareGroup', { groupId })}
-              >
-                <Text style={styles.qrBtnText}>⬡ Share</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         }
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={false}
@@ -262,52 +261,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingTop: 60,
   },
   listContent: {
     paddingBottom: 20,
   },
-  header: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  back: {
+  shareBtn: {
     color: colors.text2,
-    marginBottom: 10,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: colors.text2,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  qrBtn: {
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  qrBtnText: {
-    color: colors.text2,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  membersSection: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
   },
   membersRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    flexWrap: 'wrap',
+    marginTop: 10,
+    marginBottom: 16,
+    gap: 16,
+  },
+  memberItem: {
+    alignItems: 'center',
+    width: 48,
+  },
+  memberName: {
+    color: colors.text2,
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
   },
   avatar: {
     width: 36,

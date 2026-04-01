@@ -7,13 +7,12 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-
 import { useRoute, useNavigation } from '@react-navigation/native';
-
 import Realm from 'realm';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 import { useAlert } from '../../components/AlertProvider';
+import ScreenHeader from '../../components/ScreenHeader';
 
 export default function AddExpenseScreen() {
   const realm = useRealm();
@@ -38,7 +37,6 @@ export default function AddExpenseScreen() {
 
   const saveExpense = () => {
     const numericAmount = parseFloat(amount);
-
     if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
       showAlert({ title: 'Invalid amount', message: 'Please enter a valid amount greater than 0.' });
       return;
@@ -63,7 +61,6 @@ export default function AddExpenseScreen() {
           description: description.trim(),
           date: new Date(),
         });
-
         members.forEach(member => {
           realm.create('ExpenseSplit', {
             _id: new Realm.BSON.ObjectId(),
@@ -73,62 +70,61 @@ export default function AddExpenseScreen() {
           });
         });
       });
-
       navigation.goBack();
-    } catch (error) {
+    } catch {
       showAlert({ title: 'Error', message: 'Could not save expense. Please try again.' });
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Add Expense</Text>
+      <ScreenHeader title="Add Expense" backLabel="Group" onBack={() => navigation.goBack()} />
 
-      <TextInput
-        placeholder="Amount"
-        placeholderTextColor={colors.text3}
-        keyboardType="numeric"
-        style={styles.amountInput}
-        value={amount}
-        onChangeText={setAmount}
-        autoFocus
-      />
+      <View style={styles.form}>
+        <TextInput
+          placeholder="Amount"
+          placeholderTextColor={colors.text3}
+          keyboardType="numeric"
+          style={styles.amountInput}
+          value={amount}
+          onChangeText={setAmount}
+          autoFocus
+        />
 
-      <TextInput
-        placeholder="What for?"
-        placeholderTextColor={colors.text3}
-        style={styles.input}
-        value={description}
-        onChangeText={setDescription}
-      />
+        <TextInput
+          placeholder="What for?"
+          placeholderTextColor={colors.text3}
+          style={styles.input}
+          value={description}
+          onChangeText={setDescription}
+        />
 
-      <Text style={styles.label}>Paid by</Text>
+        <Text style={styles.label}>Paid by</Text>
 
-      <FlatList
-        horizontal
-        data={members}
-        keyExtractor={item => item._id.toHexString()}
-        renderItem={({ item }) => {
-          const isSelected = selectedMember === item._id.toHexString();
-          return (
-            <TouchableOpacity
-              style={[styles.avatar, isSelected && styles.avatarSelected]}
-              onPress={() => setSelectedMember(item._id.toHexString())}
-            >
-              <Text style={styles.avatarText}>
-                {item.name.charAt(0).toUpperCase()}
-              </Text>
-              {isSelected && (
-                <Text style={styles.avatarName}>{item.name}</Text>
-              )}
-            </TouchableOpacity>
-          );
-        }}
-      />
+        <FlatList
+          horizontal
+          data={members}
+          keyExtractor={item => item._id.toHexString()}
+          renderItem={({ item }) => {
+            const isSelected = selectedMember === item._id.toHexString();
+            return (
+              <TouchableOpacity
+                style={[styles.avatar, isSelected && styles.avatarSelected]}
+                onPress={() => setSelectedMember(item._id.toHexString())}
+              >
+                <Text style={styles.avatarText}>
+                  {item.name.charAt(0).toUpperCase()}
+                </Text>
+                {isSelected && <Text style={styles.avatarName}>{item.name}</Text>}
+              </TouchableOpacity>
+            );
+          }}
+        />
 
-      <TouchableOpacity style={styles.saveBtn} onPress={saveExpense}>
-        <Text style={styles.saveText}>Save Expense</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.saveBtn} onPress={saveExpense}>
+          <Text style={styles.saveText}>Save Expense</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -137,14 +133,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-    padding: 20,
-    paddingTop: 60,
   },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 20,
+  form: {
+    flex: 1,
+    padding: 20,
   },
   amountInput: {
     backgroundColor: colors.surface2,

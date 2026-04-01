@@ -101,6 +101,39 @@ export default function GroupScreen() {
     };
   }, [groupId, realm]);
 
+  const handleExpenseTap = (expense: any) => {
+    showAlert({
+      title: expense.description || 'Expense',
+      message: `₹${expense.amount.toFixed(2)} · paid by ${getMemberName(expense.paidByMemberId)}`,
+      buttons: [
+        {
+          text: 'Edit',
+          style: 'default',
+          onPress: () =>
+            navigation.navigate('AddExpense', {
+              groupId,
+              expenseId: expense._id.toHexString(),
+            }),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            realm.write(() => {
+              const splits = realm
+                .objects('ExpenseSplit')
+                .filtered('expenseId == $0', expense._id);
+              realm.delete(splits);
+              const exp = realm.objectForPrimaryKey('Expense', expense._id);
+              if (exp) realm.delete(exp);
+            });
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    });
+  };
+
   const markPaid = (settlement: any) => {
     showAlert({
       title: 'Mark as Paid?',
@@ -274,7 +307,11 @@ export default function GroupScreen() {
 
     if (item.type === 'expense') {
       return (
-        <View style={styles.expenseCard}>
+        <TouchableOpacity
+          style={styles.expenseCard}
+          onPress={() => handleExpenseTap(item)}
+          activeOpacity={0.7}
+        >
           <View style={styles.expenseLeft}>
             <Text style={styles.expenseDesc}>
               {item.description || 'Expense'}
@@ -285,7 +322,7 @@ export default function GroupScreen() {
             </Text>
           </View>
           <Text style={styles.expenseAmount}>₹{item.amount.toFixed(2)}</Text>
-        </View>
+        </TouchableOpacity>
       );
     }
 

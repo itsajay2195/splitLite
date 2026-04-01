@@ -19,7 +19,8 @@ export default function AddExpenseScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
-  const { groupId } = route.params;
+  const { groupId, expenseId } = route.params;
+  const isEditing = !!expenseId;
 
   const [members, setMembers] = useState<any[]>([]);
   const [amount, setAmount] = useState('');
@@ -30,10 +31,18 @@ export default function AddExpenseScreen() {
     const objectId = new Realm.BSON.ObjectId(groupId);
     const results: any = realm.objects('Member').filtered('groupId == $0', objectId);
     setMembers([...results]);
-    if (results.length > 0) {
+
+    if (isEditing) {
+      const existing: any = realm.objectForPrimaryKey('Expense', new Realm.BSON.ObjectId(expenseId));
+      if (existing) {
+        setAmount(String(existing.amount));
+        setDescription(existing.description);
+        setSelectedMember(existing.paidByMemberId.toHexString());
+      }
+    } else if (results.length > 0) {
       setSelectedMember(results[0]._id.toHexString());
     }
-  }, [groupId, realm]);
+  }, [groupId, expenseId, isEditing, realm]);
 
   const saveExpense = () => {
     const numericAmount = parseFloat(amount);
@@ -46,31 +55,50 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    const expenseId = new Realm.BSON.ObjectId();
-    const groupObjectId = new Realm.BSON.ObjectId(groupId);
     const paidById = new Realm.BSON.ObjectId(selectedMember);
     const baseAmount = Math.floor((numericAmount / members.length) * 100) / 100;
     const remainder = Math.round((numericAmount - baseAmount * members.length) * 100) / 100;
 
     try {
-      realm.write(() => {
-        realm.create('Expense', {
-          _id: expenseId,
-          groupId: groupObjectId,
-          amount: numericAmount,
-          paidByMemberId: paidById,
-          description: description.trim(),
-          date: new Date(),
-        });
-        members.forEach((member, index) => {
-          realm.create('ExpenseSplit', {
-            _id: new Realm.BSON.ObjectId(),
-            expenseId,
-            memberId: member._id,
-            amount: index === members.length - 1 ? baseAmount + remainder : baseAmount,
+      if (isEditing) {
+        const existing: any = realm.objectForPrimaryKey('Expense', new Realm.BSON.ObjectId(expenseId));
+        realm.write(() => {
+          existing.amount = numericAmount;
+          existing.description = description.trim();
+          existing.paidByMemberId = paidById;
+          const oldSplits = realm.objects('ExpenseSplit').filtered('expenseId == $0', existing._id);
+          realm.delete(oldSplits);
+          members.forEach((member, index) => {
+            realm.create('ExpenseSplit', {
+              _id: new Realm.BSON.ObjectId(),
+              expenseId: existing._id,
+              memberId: member._id,
+              amount: index === members.length - 1 ? baseAmount + remainder : baseAmount,
+            });
           });
         });
-      });
+      } else {
+        const expenseObjId = new Realm.BSON.ObjectId();
+        const groupObjectId = new Realm.BSON.ObjectId(groupId);
+        realm.write(() => {
+          realm.create('Expense', {
+            _id: expenseObjId,
+            groupId: groupObjectId,
+            amount: numericAmount,
+            paidByMemberId: paidById,
+            description: description.trim(),
+            date: new Date(),
+          });
+          members.forEach((member, index) => {
+            realm.create('ExpenseSplit', {
+              _id: new Realm.BSON.ObjectId(),
+              expenseId: expenseObjId,
+              memberId: member._id,
+              amount: index === members.length - 1 ? baseAmount + remainder : baseAmount,
+            });
+          });
+        });
+      }
       navigation.goBack();
     } catch {
       showAlert({ title: 'Error', message: 'Could not save expense. Please try again.' });
@@ -79,7 +107,11 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Add Expense" backLabel="Group" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title={isEditing ? 'Edit Expense' : 'Add Expense'}
+        backLabel="Group"
+        onBack={() => navigation.goBack()}
+      />
 
       <View style={styles.form}>
         <TextInput
@@ -89,7 +121,7 @@ export default function AddExpenseScreen() {
           style={styles.amountInput}
           value={amount}
           onChangeText={setAmount}
-          autoFocus
+          autoFocus={!isEditing}
         />
 
         <TextInput
@@ -123,7 +155,7 @@ export default function AddExpenseScreen() {
         />
 
         <TouchableOpacity style={styles.saveBtn} onPress={saveExpense}>
-          <Text style={styles.saveText}>Save Expense</Text>
+          <Text style={styles.saveText}>{isEditing ? 'Update Expense' : 'Save Expense'}</Text>
         </TouchableOpacity>
       </View>
     </View>

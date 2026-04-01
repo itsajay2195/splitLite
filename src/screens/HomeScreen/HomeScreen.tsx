@@ -12,11 +12,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 import { calculateBalances } from '../../utils/balanceCalculator';
+import { useAlert } from '../../components/AlertProvider';
 
 export default function HomeScreen() {
   const realm = useRealm();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { showAlert } = useAlert();
   const [groups, setGroups] = useState<any[]>([]);
 
   useEffect(() => {
@@ -45,6 +47,34 @@ export default function HomeScreen() {
     const isSettled = balances.every(b => Math.abs(b.netBalance) <= 0.01);
 
     return { memberCount: memberResults.length, totalSpent, isSettled };
+  };
+
+  const handleDeleteGroup = (group: any) => {
+    showAlert({
+      title: 'Delete Group?',
+      message: `"${group.name}" and all its expenses will be permanently deleted.`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            realm.write(() => {
+              const gId = group._id;
+              const expenses = realm.objects('Expense').filtered('groupId == $0', gId);
+              expenses.forEach((e: any) => {
+                realm.delete(realm.objects('ExpenseSplit').filtered('expenseId == $0', e._id));
+              });
+              realm.delete(expenses);
+              realm.delete(realm.objects('Payment').filtered('groupId == $0', gId));
+              realm.delete(realm.objects('Member').filtered('groupId == $0', gId));
+              const g = realm.objectForPrimaryKey('Group', gId);
+              if (g) realm.delete(g);
+            });
+          },
+        },
+      ],
+    });
   };
 
   return (
@@ -86,6 +116,7 @@ export default function HomeScreen() {
               onPress={() =>
                 navigation.navigate('Group', { groupId: item._id.toHexString() })
               }
+              onLongPress={() => handleDeleteGroup(item)}
             >
               <View style={styles.cardLeft}>
                 <Text style={styles.groupName}>{item.name}</Text>

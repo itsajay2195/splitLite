@@ -24,13 +24,16 @@ export default function HomeScreen() {
   useEffect(() => {
     const results = realm.objects('Group');
     const payments = realm.objects('Payment');
+    const expenses = realm.objects('Expense');
     const update = () => setGroups([...results]);
     update();
     results.addListener(update);
     payments.addListener(update);
+    expenses.addListener(update);
     return () => {
       results.removeAllListeners();
       payments.removeAllListeners();
+      expenses.removeAllListeners();
     };
   }, [realm]);
 

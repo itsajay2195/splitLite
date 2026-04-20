@@ -16,6 +16,7 @@ import { simplifyDebts } from '../../utils/debtSimplifier';
 import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
 import { useAlert } from '../../components/AlertProvider';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   food: '🍔',
@@ -379,12 +380,12 @@ export default function GroupScreen() {
             <TouchableOpacity
               onPress={() => navigation.navigate('EditGroup', { groupId })}
             >
-              <Text style={styles.headerBtn}>Edit</Text>
+              <Ionicons name="pencil-outline" size={20} color={colors.text2} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('ShareGroup', { groupId })}
             >
-              <Text style={styles.headerBtn}>⬡ Share</Text>
+              <Ionicons name="qr-code-outline" size={20} color={colors.text2} />
             </TouchableOpacity>
           </View>
         }
@@ -433,7 +434,8 @@ export default function GroupScreen() {
         style={styles.addBtn}
         onPress={() => navigation.navigate('AddExpense', { groupId })}
       >
-        <Text style={styles.addText}>+ Add Expense</Text>
+        <Ionicons name="add" size={20} color="#000" />
+        <Text style={styles.addText}>Add Expense</Text>
       </TouchableOpacity>
     </View>
   );

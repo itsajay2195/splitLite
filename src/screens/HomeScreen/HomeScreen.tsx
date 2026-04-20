@@ -13,6 +13,7 @@ import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 import { calculateBalances } from '../../utils/balanceCalculator';
 import { useAlert } from '../../components/AlertProvider';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function HomeScreen() {
   const realm = useRealm();
@@ -91,13 +92,13 @@ export default function HomeScreen() {
             style={styles.importBtn}
             onPress={() => navigation.navigate('ImportGroup')}
           >
-            <Text style={styles.importText}>⬡</Text>
+            <Ionicons name="qr-code-outline" size={20} color={colors.text2} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => navigation.navigate('CreateGroup')}
           >
-            <Text style={styles.addText}>+</Text>
+            <Ionicons name="add" size={24} color="#000" />
           </TouchableOpacity>
         </View>
       </View>
@@ -177,10 +178,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  importText: {
-    color: colors.text2,
-    fontSize: 18,
-  },
   addBtn: {
     backgroundColor: colors.accent,
     width: 40,
@@ -188,10 +185,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  addText: {
-    color: '#000',
-    fontSize: 22,
   },
   groupCard: {
     backgroundColor: colors.surface2,

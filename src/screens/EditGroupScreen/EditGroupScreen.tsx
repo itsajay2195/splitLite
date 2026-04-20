@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Realm from 'realm';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAlert } from '../../components/AlertProvider';
 import ScreenHeader from '../../components/ScreenHeader';
 
@@ -172,9 +173,9 @@ export default function EditGroupScreen() {
               <Text style={styles.activityTag}>Has expenses</Text>
             ) : (
               <TouchableOpacity onPress={() => toggleRemove(member.id)}>
-                <Text style={[styles.removeBtn, member.markedForRemoval && styles.undoBtn]}>
-                  {member.markedForRemoval ? 'Undo' : '×'}
-                </Text>
+                {member.markedForRemoval
+                  ? <Text style={styles.undoBtn}>Undo</Text>
+                  : <Ionicons name="close" size={18} color={colors.text3} />}
               </TouchableOpacity>
             )}
           </View>
@@ -190,7 +191,7 @@ export default function EditGroupScreen() {
               <Text style={styles.newTagText}>New</Text>
             </View>
             <TouchableOpacity onPress={() => removeNewMember(i)}>
-              <Text style={styles.removeBtn}>×</Text>
+              <Ionicons name="close" size={18} color={colors.text3} />
             </TouchableOpacity>
           </View>
         ))}
@@ -219,7 +220,7 @@ export default function EditGroupScreen() {
             keyboardType="email-address"
           />
           <TouchableOpacity style={styles.addBtn} onPress={addMember}>
-            <Text style={styles.addBtnText}>+</Text>
+            <Ionicons name="add" size={22} color="#000" />
           </TouchableOpacity>
         </View>
       </ScrollView>

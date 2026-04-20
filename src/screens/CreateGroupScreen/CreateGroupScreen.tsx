@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/color';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Realm from 'realm';
 import { useRealm } from '../../realm/RealmContext';
 import { useAlert } from '../../components/AlertProvider';
@@ -115,7 +116,7 @@ export default function CreateGroupScreen() {
           keyboardType="email-address"
         />
         <TouchableOpacity style={styles.addBtn} onPress={addMember}>
-          <Text style={{ color: '#000', fontWeight: '700' }}>+</Text>
+          <Ionicons name="add" size={22} color="#000" />
         </TouchableOpacity>
       </View>
 
@@ -133,7 +134,7 @@ export default function CreateGroupScreen() {
               ) : null}
             </View>
             <TouchableOpacity onPress={() => removeMember(index)}>
-              <Text style={{ color: colors.text3, fontSize: 18, paddingLeft: 12 }}>×</Text>
+              <Ionicons name="close" size={18} color={colors.text3} />
             </TouchableOpacity>
           </View>
         )}

@@ -16,6 +16,7 @@ import { simplifyDebts } from '../../utils/debtSimplifier';
 import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
 import { useAlert } from '../../components/AlertProvider';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   food: '🍔',
@@ -196,6 +197,15 @@ export default function GroupScreen() {
     Linking.openURL(upiUrl).catch(() => {});
   };
 
+  const summary = useMemo(() => {
+    const totalSpent = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+    const isSettled = balances.every(b => Math.abs(b.netBalance) <= 0.01);
+    const largestExpense = expenses.length > 0
+      ? expenses.reduce((max: any, e: any) => e.amount > max.amount ? e : max, expenses[0])
+      : null;
+    return { totalSpent, isSettled, largestExpense, expenseCount: expenses.length };
+  }, [expenses, balances]);
+
   const sections = useMemo(() => {
     const result: { key: string; title: string; data: SectionData[] }[] = [
       {
@@ -370,12 +380,12 @@ export default function GroupScreen() {
             <TouchableOpacity
               onPress={() => navigation.navigate('EditGroup', { groupId })}
             >
-              <Text style={styles.headerBtn}>Edit</Text>
+              <Ionicons name="pencil-outline" size={20} color={colors.text2} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('ShareGroup', { groupId })}
             >
-              <Text style={styles.headerBtn}>⬡ Share</Text>
+              <Ionicons name="qr-code-outline" size={20} color={colors.text2} />
             </TouchableOpacity>
           </View>
         }
@@ -393,6 +403,28 @@ export default function GroupScreen() {
             <Text style={styles.sectionTitle}>{section.title}</Text>
           ) : null
         }
+        ListHeaderComponent={
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryTile}>
+              <Text style={styles.summaryValue}>₹{summary.totalSpent.toFixed(0)}</Text>
+              <Text style={styles.summaryLabel}>Total spent</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryTile}>
+              <Text style={styles.summaryValue}>{summary.expenseCount}</Text>
+              <Text style={styles.summaryLabel}>{summary.expenseCount === 1 ? 'Expense' : 'Expenses'}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryTile}>
+              <View style={[styles.statusPill, summary.isSettled ? styles.statusPillSettled : styles.statusPillPending]}>
+                <Text style={[styles.statusText, summary.isSettled ? styles.statusTextSettled : styles.statusTextPending]}>
+                  {summary.isSettled ? 'Settled' : 'Pending'}
+                </Text>
+              </View>
+              <Text style={styles.summaryLabel}>Status</Text>
+            </View>
+          </View>
+        }
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={false}
       />
@@ -402,7 +434,8 @@ export default function GroupScreen() {
         style={styles.addBtn}
         onPress={() => navigation.navigate('AddExpense', { groupId })}
       >
-        <Text style={styles.addText}>+ Add Expense</Text>
+        <Ionicons name="add" size={20} color="#000" />
+        <Text style={styles.addText}>Add Expense</Text>
       </TouchableOpacity>
     </View>
   );
@@ -608,5 +641,59 @@ const styles = StyleSheet.create({
   addText: {
     color: '#000',
     fontWeight: '700',
+  },
+  summaryCard: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: colors.surface2,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+  },
+  summaryTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  summaryDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginVertical: 4,
+  },
+  summaryValue: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  summaryLabel: {
+    color: colors.text2,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  statusPillSettled: {
+    backgroundColor: 'rgba(0,229,160,0.12)',
+    borderColor: colors.accent,
+  },
+  statusPillPending: {
+    backgroundColor: 'rgba(255,74,107,0.12)',
+    borderColor: colors.danger,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusTextSettled: {
+    color: colors.accent,
+  },
+  statusTextPending: {
+    color: colors.danger,
   },
 });

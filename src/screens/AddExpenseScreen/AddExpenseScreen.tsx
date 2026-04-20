@@ -267,7 +267,7 @@ export default function AddExpenseScreen() {
           keyboardType="numeric"
           style={styles.amountInput}
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={v => setAmount(v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))}
           autoFocus={!isEditing}
         />
 

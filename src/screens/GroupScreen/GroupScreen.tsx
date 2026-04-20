@@ -17,6 +17,17 @@ import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
 import { useAlert } from '../../components/AlertProvider';
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  food: '🍔',
+  travel: '✈️',
+  rent: '🏠',
+  fun: '🎉',
+  grocery: '🛒',
+  transport: '🚗',
+  health: '💊',
+  other: '📦',
+};
+
 type SectionData =
   | { type: 'members' }
   | { type: 'balance'; memberId: string; name: string; netBalance: number }
@@ -35,6 +46,7 @@ type SectionData =
       paidByMemberId: any;
       amount: number;
       date: Date;
+      category?: string;
     }
   | { type: 'empty' };
 
@@ -313,9 +325,16 @@ export default function GroupScreen() {
           activeOpacity={0.7}
         >
           <View style={styles.expenseLeft}>
-            <Text style={styles.expenseDesc}>
-              {item.description || 'Expense'}
-            </Text>
+            <View style={styles.expenseDescRow}>
+              {item.category ? (
+                <Text style={styles.expenseCategoryEmoji}>
+                  {CATEGORY_EMOJI[item.category] ?? '📦'}
+                </Text>
+              ) : null}
+              <Text style={styles.expenseDesc} numberOfLines={1}>
+                {item.description || 'Expense'}
+              </Text>
+            </View>
             <Text style={styles.expenseMeta}>
               Paid by {getMemberName(item.paidByMemberId)} ·{' '}
               {new Date(item.date).toLocaleDateString()}
@@ -347,11 +366,18 @@ export default function GroupScreen() {
         backLabel="Groups"
         onBack={() => navigation.goBack()}
         right={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ShareGroup', { groupId })}
-          >
-            <Text style={styles.shareBtn}>⬡ Share</Text>
-          </TouchableOpacity>
+          <View style={styles.headerBtns}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EditGroup', { groupId })}
+            >
+              <Text style={styles.headerBtn}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ShareGroup', { groupId })}
+            >
+              <Text style={styles.headerBtn}>⬡ Share</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
       <SectionList
@@ -389,6 +415,15 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
+  },
+  headerBtns: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  headerBtn: {
+    color: colors.text2,
+    fontSize: 14,
+    fontWeight: '600',
   },
   shareBtn: {
     color: colors.text2,
@@ -530,10 +565,19 @@ const styles = StyleSheet.create({
   expenseLeft: {
     flex: 1,
   },
+  expenseDescRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  expenseCategoryEmoji: {
+    fontSize: 15,
+  },
   expenseDesc: {
     color: colors.text,
     fontWeight: '600',
     fontSize: 15,
+    flex: 1,
   },
   expenseMeta: {
     color: colors.text2,

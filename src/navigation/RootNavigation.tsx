@@ -6,6 +6,7 @@ import GroupScreen from '../screens/GroupScreen/GroupScreen';
 import AddExpenseScreen from '../screens/AddExpenseScreen/AddExpenseScreen';
 import ShareGroupScreen from '../screens/ShareGroupScreen/ShareGroupScreen';
 import ImportGroupScreen from '../screens/ImportGroupScreen/ImportGroupScreen';
+import EditGroupScreen from '../screens/EditGroupScreen/EditGroupScreen';
 import { NavigationContainer } from '@react-navigation/native';
 
 const Stack = createNativeStackNavigator();
@@ -24,6 +25,7 @@ export default function RootNavigation() {
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="ShareGroup" component={ShareGroupScreen} />
         <Stack.Screen name="ImportGroup" component={ImportGroupScreen} />
+        <Stack.Screen name="EditGroup" component={EditGroupScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

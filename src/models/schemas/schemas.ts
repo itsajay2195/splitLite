@@ -41,6 +41,7 @@ export class Expense extends Realm.Object<Expense> {
   paidByMemberId!: Realm.BSON.ObjectId;
   description!: string;
   date!: Date;
+  category?: string;
 
   static schema: Realm.ObjectSchema = {
     name: 'Expense',
@@ -52,6 +53,7 @@ export class Expense extends Realm.Object<Expense> {
       paidByMemberId: 'objectId',
       description: 'string',
       date: 'date',
+      category: 'string?',
     },
   };
 }

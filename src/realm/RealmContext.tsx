@@ -21,7 +21,7 @@ export const RealmProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const instance = new Realm({
       schema: [Group, Expense, Member, ExpenseSplit, Payment],
-      schemaVersion: 3,
+      schemaVersion: 4,
     });
     setRealm(instance);
 

@@ -15,6 +15,7 @@ import { colors } from '../../theme/color';
 import { useAlert } from '../../components/AlertProvider';
 import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
+import { logActivity } from '../../utils/activityLogger';
 
 type SplitMode = 'equal' | 'amount' | 'percent' | 'shares';
 
@@ -216,6 +217,9 @@ export default function AddExpenseScreen() {
               amount: s.amount,
             });
           });
+          const payerName = members.find(m => m._id.toHexString() === selectedMember)?.name ?? 'Someone';
+          logActivity(realm, new Realm.BSON.ObjectId(groupId), 'expense_edited',
+            `${payerName} updated ${description.trim() || 'expense'} to ₹${total.toFixed(2)}`);
         });
       } else {
         const expenseObjId = new Realm.BSON.ObjectId();
@@ -237,6 +241,9 @@ export default function AddExpenseScreen() {
               amount: s.amount,
             });
           });
+          const payerName = members.find(m => m._id.toHexString() === selectedMember)?.name ?? 'Someone';
+          logActivity(realm, new Realm.BSON.ObjectId(groupId), 'expense_added',
+            `${payerName} added ${description.trim() || 'expense'} ₹${total.toFixed(2)}`);
         });
       }
       navigation.goBack();

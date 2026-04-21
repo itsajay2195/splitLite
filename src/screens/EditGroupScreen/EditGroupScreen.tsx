@@ -14,6 +14,7 @@ import Realm from 'realm';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { logActivity } from '../../utils/activityLogger';
 import { useAlert } from '../../components/AlertProvider';
 import ScreenHeader from '../../components/ScreenHeader';
 
@@ -114,6 +115,7 @@ export default function EditGroupScreen() {
           .forEach(m => {
             const member = realm.objectForPrimaryKey('Member', new Realm.BSON.ObjectId(m.id));
             if (member) realm.delete(member);
+            logActivity(realm, gId, 'member_removed', `${m.name} was removed from the group`);
           });
 
         newMembers.forEach(m => {
@@ -123,6 +125,7 @@ export default function EditGroupScreen() {
             name: m.name,
             upiId: m.upiId || undefined,
           });
+          logActivity(realm, gId, 'member_added', `${m.name} joined the group`);
         });
       });
       navigation.goBack();

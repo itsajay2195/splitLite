@@ -80,6 +80,26 @@ export class Payment extends Realm.Object<Payment> {
   };
 }
 
+export class ActivityLog extends Realm.Object<ActivityLog> {
+  _id!: Realm.BSON.ObjectId;
+  groupId!: Realm.BSON.ObjectId;
+  type!: string;
+  description!: string;
+  date!: Date;
+
+  static schema: Realm.ObjectSchema = {
+    name: 'ActivityLog',
+    primaryKey: '_id',
+    properties: {
+      _id: 'objectId',
+      groupId: 'objectId',
+      type: 'string',
+      description: 'string',
+      date: 'date',
+    },
+  };
+}
+
 export class ExpenseSplit extends Realm.Object<ExpenseSplit> {
   _id!: Realm.BSON.ObjectId;
   expenseId!: Realm.BSON.ObjectId;

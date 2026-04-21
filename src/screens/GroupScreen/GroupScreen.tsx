@@ -17,6 +17,8 @@ import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
 import { useAlert } from '../../components/AlertProvider';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { logActivity } from '../../utils/activityLogger';
+import { timeAgo } from '../../utils/timeAgo';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   food: '🍔',
@@ -49,7 +51,14 @@ type SectionData =
       date: Date;
       category?: string;
     }
-  | { type: 'empty' };
+  | { type: 'empty' }
+  | {
+      type: 'activity';
+      _id: string;
+      activityType: string;
+      description: string;
+      date: Date;
+    };
 
 export default function GroupScreen() {
   const realm = useRealm();
@@ -63,6 +72,7 @@ export default function GroupScreen() {
   const [balances, setBalances] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [settlements, setSettlements] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
@@ -101,23 +111,36 @@ export default function GroupScreen() {
       );
     };
 
+    const activityResults = realm
+      .objects('ActivityLog')
+      .filtered('groupId == $0', objectId)
+      .sorted('date', true);
+
+    const refreshActivities = () =>
+      setActivities([...activityResults].slice(0, 30));
+
     setGroup(groupData);
     setMembers([...memberResults]);
     refresh();
+    refreshActivities();
 
     expenseResults.addListener(refresh);
     paymentResults.addListener(refresh);
+    activityResults.addListener(refreshActivities);
 
     return () => {
       expenseResults.removeAllListeners();
       paymentResults.removeAllListeners();
+      activityResults.removeAllListeners();
     };
   }, [groupId, realm]);
 
   const handleExpenseTap = (expense: any) => {
     showAlert({
       title: expense.description || 'Expense',
-      message: `₹${expense.amount.toFixed(2)} · paid by ${getMemberName(expense.paidByMemberId)}`,
+      message: `₹${expense.amount.toFixed(2)} · paid by ${getMemberName(
+        expense.paidByMemberId,
+      )}`,
       buttons: [
         {
           text: 'Edit',
@@ -139,6 +162,14 @@ export default function GroupScreen() {
               realm.delete(splits);
               const exp = realm.objectForPrimaryKey('Expense', expense._id);
               if (exp) realm.delete(exp);
+              logActivity(
+                realm,
+                new Realm.BSON.ObjectId(groupId),
+                'expense_deleted',
+                `${expense.description || 'Expense'} ₹${expense.amount.toFixed(
+                  2,
+                )} deleted`,
+              );
             });
           },
         },
@@ -168,6 +199,14 @@ export default function GroupScreen() {
                 amount: settlement.amount,
                 date: new Date(),
               });
+              logActivity(
+                realm,
+                new Realm.BSON.ObjectId(groupId),
+                'payment_marked',
+                `${settlement.fromName} paid ${
+                  settlement.toName
+                } ₹${settlement.amount.toFixed(2)}`,
+              );
             });
           },
         },
@@ -198,12 +237,24 @@ export default function GroupScreen() {
   };
 
   const summary = useMemo(() => {
-    const totalSpent = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+    const totalSpent = expenses.reduce(
+      (sum: number, e: any) => sum + e.amount,
+      0,
+    );
     const isSettled = balances.every(b => Math.abs(b.netBalance) <= 0.01);
-    const largestExpense = expenses.length > 0
-      ? expenses.reduce((max: any, e: any) => e.amount > max.amount ? e : max, expenses[0])
-      : null;
-    return { totalSpent, isSettled, largestExpense, expenseCount: expenses.length };
+    const largestExpense =
+      expenses.length > 0
+        ? expenses.reduce(
+            (max: any, e: any) => (e.amount > max.amount ? e : max),
+            expenses[0],
+          )
+        : null;
+    return {
+      totalSpent,
+      isSettled,
+      largestExpense,
+      expenseCount: expenses.length,
+    };
   }, [expenses, balances]);
 
   const sections = useMemo(() => {
@@ -237,8 +288,23 @@ export default function GroupScreen() {
           : [{ type: 'empty' as const }],
     });
 
+    result.push({
+      key: 'activity',
+      title: 'Activity',
+      data:
+        activities.length > 0
+          ? activities.map(a => ({
+              type: 'activity' as const,
+              _id: a._id.toHexString(),
+              activityType: a.type,
+              description: a.description,
+              date: a.date,
+            }))
+          : [{ type: 'empty' as const }],
+    });
+
     return result;
-  }, [balances, settlements, expenses]);
+  }, [balances, settlements, expenses, activities]);
 
   if (!group) return null;
 
@@ -363,6 +429,38 @@ export default function GroupScreen() {
       );
     }
 
+    if (item.type === 'activity') {
+      const iconMap: Record<string, { name: string; color: string }> = {
+        expense_added: { name: 'add-circle-outline', color: colors.accent },
+        expense_edited: { name: 'pencil-outline', color: colors.text2 },
+        expense_deleted: { name: 'trash-outline', color: colors.danger },
+        payment_marked: {
+          name: 'checkmark-circle-outline',
+          color: colors.accent,
+        },
+        member_added: { name: 'person-add-outline', color: colors.accent },
+        member_removed: { name: 'person-remove-outline', color: colors.danger },
+      };
+      const icon = iconMap[item.activityType] ?? {
+        name: 'ellipse-outline',
+        color: colors.text2,
+      };
+      return (
+        <View style={styles.activityRow}>
+          <Ionicons
+            name={icon.name}
+            size={18}
+            color={icon.color}
+            style={styles.activityIcon}
+          />
+          <View style={styles.activityBody}>
+            <Text style={styles.activityDesc}>{item.description}</Text>
+            <Text style={styles.activityTime}>{timeAgo(item.date)}</Text>
+          </View>
+        </View>
+      );
+    }
+
     return null;
   };
 
@@ -406,18 +504,36 @@ export default function GroupScreen() {
         ListHeaderComponent={
           <View style={styles.summaryCard}>
             <View style={styles.summaryTile}>
-              <Text style={styles.summaryValue}>₹{summary.totalSpent.toFixed(0)}</Text>
+              <Text style={styles.summaryValue}>
+                ₹{summary.totalSpent.toFixed(0)}
+              </Text>
               <Text style={styles.summaryLabel}>Total spent</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryTile}>
               <Text style={styles.summaryValue}>{summary.expenseCount}</Text>
-              <Text style={styles.summaryLabel}>{summary.expenseCount === 1 ? 'Expense' : 'Expenses'}</Text>
+              <Text style={styles.summaryLabel}>
+                {summary.expenseCount === 1 ? 'Expense' : 'Expenses'}
+              </Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryTile}>
-              <View style={[styles.statusPill, summary.isSettled ? styles.statusPillSettled : styles.statusPillPending]}>
-                <Text style={[styles.statusText, summary.isSettled ? styles.statusTextSettled : styles.statusTextPending]}>
+              <View
+                style={[
+                  styles.statusPill,
+                  summary.isSettled
+                    ? styles.statusPillSettled
+                    : styles.statusPillPending,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    summary.isSettled
+                      ? styles.statusTextSettled
+                      : styles.statusTextPending,
+                  ]}
+                >
                   {summary.isSettled ? 'Settled' : 'Pending'}
                 </Text>
               </View>
@@ -636,7 +752,9 @@ const styles = StyleSheet.create({
     margin: 20,
     padding: 16,
     borderRadius: 16,
-    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   addText: {
     color: '#000',
@@ -695,5 +813,27 @@ const styles = StyleSheet.create({
   },
   statusTextPending: {
     color: colors.danger,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 12,
+  },
+  activityIcon: {
+    marginTop: 1,
+  },
+  activityBody: {
+    flex: 1,
+  },
+  activityDesc: {
+    color: colors.text,
+    fontSize: 14,
+  },
+  activityTime: {
+    color: colors.text3,
+    fontSize: 11,
+    marginTop: 2,
   },
 });

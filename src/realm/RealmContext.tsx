@@ -2,6 +2,7 @@
 import Realm from 'realm';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
+  ActivityLog,
   Expense,
   ExpenseSplit,
   Group,
@@ -20,8 +21,8 @@ export const RealmProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const instance = new Realm({
-      schema: [Group, Expense, Member, ExpenseSplit, Payment],
-      schemaVersion: 4,
+      schema: [Group, Expense, Member, ExpenseSplit, Payment, ActivityLog],
+      schemaVersion: 5,
     });
     setRealm(instance);
 

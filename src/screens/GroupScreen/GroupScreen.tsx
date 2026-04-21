@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Linking,
   SectionList,
+  Share,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
@@ -223,6 +224,41 @@ export default function GroupScreen() {
 
   const getMember = (memberId: string) =>
     members.find(m => m._id.toHexString() === memberId);
+
+  const shareGroupSummary = () => {
+    const lines: string[] = [];
+    lines.push(`📊 ${group.name} — Summary`);
+    lines.push('');
+    lines.push(`💰 Total spent: ₹${summary.totalSpent.toFixed(0)}`);
+    lines.push(`👥 ${members.length} ${members.length === 1 ? 'member' : 'members'} · ${summary.expenseCount} ${summary.expenseCount === 1 ? 'expense' : 'expenses'}`);
+
+    if (balances.length > 0) {
+      lines.push('');
+      lines.push('Balances:');
+      balances.forEach(b => {
+        if (Math.abs(b.netBalance) <= 0.01) {
+          lines.push(`  • ${b.name} — Settled ✓`);
+        } else if (b.netBalance > 0) {
+          lines.push(`  • ${b.name} gets ₹${b.netBalance.toFixed(2)}`);
+        } else {
+          lines.push(`  • ${b.name} owes ₹${Math.abs(b.netBalance).toFixed(2)}`);
+        }
+      });
+    }
+
+    if (settlements.length > 0) {
+      lines.push('');
+      lines.push('Settle Up:');
+      settlements.forEach(s => {
+        lines.push(`  • ${s.fromName} → ${s.toName}: ₹${s.amount.toFixed(2)}`);
+      });
+    }
+
+    lines.push('');
+    lines.push('Shared via SplitLite 🤝');
+
+    Share.share({ message: lines.join('\n') });
+  };
 
   const handleUpiPay = (settlement: any) => {
     const toMember = getMember(settlement.to);
@@ -539,6 +575,11 @@ export default function GroupScreen() {
               </View>
               <Text style={styles.summaryLabel}>Status</Text>
             </View>
+            <View style={styles.summaryDivider} />
+            <TouchableOpacity style={styles.summaryTile} onPress={shareGroupSummary}>
+              <Ionicons name="share-social-outline" size={20} color={colors.accent} />
+              <Text style={[styles.summaryLabel, { color: colors.accent }]}>Share</Text>
+            </TouchableOpacity>
           </View>
         }
         contentContainerStyle={styles.listContent}

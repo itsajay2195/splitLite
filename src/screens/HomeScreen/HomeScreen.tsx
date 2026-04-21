@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,14 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import { useEffect, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/color';
 import { useRealm } from '../../realm/RealmContext';
 import { calculateBalances } from '../../utils/balanceCalculator';
 import { useAlert } from '../../components/AlertProvider';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { scheduleGroupReminders } from '../../utils/reminderService';
 
 export default function HomeScreen() {
   const realm = useRealm();
@@ -21,6 +21,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useAlert();
   const [groups, setGroups] = useState<any[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      scheduleGroupReminders(realm).catch(() => {});
+    }, [realm]),
+  );
 
   useEffect(() => {
     const results = realm.objects('Group');

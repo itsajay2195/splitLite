@@ -102,7 +102,7 @@ export default function ShareGroupScreen() {
                 <View style={styles.infoBox}>
                   <Text style={styles.infoTitle}>How to use</Text>
                   <Text style={styles.infoText}>
-                    Let a friend scan this QR code in their SplitLite app to import the full group — members, expenses, and balances — with no internet required.
+                    Let a friend scan this QR code in their Baagam app to import the full group — members, expenses, and balances — with no internet required.
                   </Text>
                 </View>
               </>

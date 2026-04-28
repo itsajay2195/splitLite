@@ -4,6 +4,7 @@ import { RealmProvider } from './src/realm/RealmContext';
 import AlertProvider from './src/components/AlertProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { requestNotificationPermission } from './src/utils/reminderService';
+import { UserProvider } from './src/context/UserContext';
 
 function App() {
   useEffect(() => {
@@ -12,11 +13,13 @@ function App() {
 
   return (
     <SafeAreaProvider>
-      <RealmProvider>
-        <AlertProvider>
-          <RootNavigation />
-        </AlertProvider>
-      </RealmProvider>
+      <UserProvider>
+        <RealmProvider>
+          <AlertProvider>
+            <RootNavigation />
+          </AlertProvider>
+        </RealmProvider>
+      </UserProvider>
     </SafeAreaProvider>
   );
 }

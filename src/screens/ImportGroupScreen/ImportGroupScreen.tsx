@@ -32,83 +32,124 @@ export default function ImportGroupScreen() {
     });
   }, []);
 
-  const importGroup = (json: string) => {
-    try {
-      const payload = JSON.parse(json);
-
-      if (payload.v !== 1 || !payload.group || !payload.members) {
-        throw new Error('Invalid QR code.');
-      }
-
-      // Check if group already exists
-      const existingId = new Realm.BSON.ObjectId(payload.group.id);
-      const existing = realm.objectForPrimaryKey('Group', existingId);
-
-      if (existing) {
-        showAlert({
-          title: 'Already imported',
-          message: `"${payload.group.name}" is already in your groups.`,
-        });
-        navigation.goBack();
-        return;
-      }
-
-      realm.write(() => {
-        // Create group with original ID so re-imports are idempotent
+  const applyPayload = (payload: any, existingId: Realm.BSON.ObjectId, isSyncing: boolean) => {
+    realm.write(() => {
+      if (!isSyncing) {
         realm.create('Group', {
           _id: existingId,
           name: payload.group.name,
           createdAt: new Date(payload.group.createdAt),
         });
+      }
 
-        const memberIdMap: Record<string, Realm.BSON.ObjectId> = {};
-
-        payload.members.forEach((m: any) => {
-          const memberId = new Realm.BSON.ObjectId(m.id);
-          memberIdMap[m.id] = memberId;
+      // Members — skip if already exists
+      payload.members?.forEach((m: any) => {
+        const mId = new Realm.BSON.ObjectId(m.id);
+        if (!realm.objectForPrimaryKey('Member', mId)) {
           realm.create('Member', {
-            _id: memberId,
+            _id: mId,
             groupId: existingId,
             name: m.name,
             upiId: m.upiId ?? undefined,
           });
-        });
+        }
+      });
 
-        payload.expenses?.forEach((e: any) => {
-          const expenseId = new Realm.BSON.ObjectId(e.id);
+      // Expenses + their splits — skip if already exists
+      payload.expenses?.forEach((e: any) => {
+        const eId = new Realm.BSON.ObjectId(e.id);
+        if (!realm.objectForPrimaryKey('Expense', eId)) {
           realm.create('Expense', {
-            _id: expenseId,
+            _id: eId,
             groupId: existingId,
             amount: e.amount,
             paidByMemberId: new Realm.BSON.ObjectId(e.paidBy),
             description: e.desc ?? '',
             date: new Date(e.date),
+            category: e.category ?? undefined,
           });
-        });
-
-        payload.splits?.forEach((s: any) => {
-          realm.create('ExpenseSplit', {
-            _id: new Realm.BSON.ObjectId(),
-            expenseId: new Realm.BSON.ObjectId(s.expenseId),
-            memberId: new Realm.BSON.ObjectId(s.memberId),
-            amount: s.amount,
-          });
-        });
+          // Only create splits for new expenses
+          payload.splits
+            ?.filter((s: any) => s.expenseId === e.id)
+            .forEach((s: any) => {
+              realm.create('ExpenseSplit', {
+                _id: new Realm.BSON.ObjectId(),
+                expenseId: eId,
+                memberId: new Realm.BSON.ObjectId(s.memberId),
+                amount: s.amount,
+              });
+            });
+        }
       });
 
+      // Payments — skip if already exists (v2 payload only)
+      payload.payments?.forEach((p: any) => {
+        const pId = new Realm.BSON.ObjectId(p.id);
+        if (!realm.objectForPrimaryKey('Payment', pId)) {
+          realm.create('Payment', {
+            _id: pId,
+            groupId: existingId,
+            fromMemberId: new Realm.BSON.ObjectId(p.from),
+            toMemberId: new Realm.BSON.ObjectId(p.to),
+            amount: p.amount,
+            date: new Date(p.date),
+          });
+        }
+      });
+    });
+  };
+
+  const importGroup = (json: string) => {
+    try {
+      const payload = JSON.parse(json);
+
+      if ((!payload.v || payload.v < 1) || !payload.group || !payload.members) {
+        throw new Error('Invalid QR code.');
+      }
+
+      const existingId = new Realm.BSON.ObjectId(payload.group.id);
+      const existing = realm.objectForPrimaryKey('Group', existingId);
+
+      if (existing) {
+        // Group already exists — offer to sync
+        showAlert({
+          title: 'Sync group?',
+          message: `"${payload.group.name}" is already in your groups. Sync to get the latest expenses and payments from this QR?`,
+          buttons: [
+            { text: 'Cancel', style: 'cancel', onPress: () => setScanned(false) },
+            {
+              text: 'Sync',
+              style: 'default',
+              onPress: () => {
+                applyPayload(payload, existingId, true);
+                showAlert({
+                  title: 'Synced!',
+                  message: `"${payload.group.name}" is up to date.`,
+                  buttons: [{
+                    text: 'View Group',
+                    style: 'default',
+                    onPress: () => navigation.replace('Group', { groupId: payload.group.id }),
+                  }],
+                });
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      // Fresh import
+      applyPayload(payload, existingId, false);
       showAlert({
         title: 'Imported!',
         message: `"${payload.group.name}" was added to your groups.`,
-        buttons: [
-          {
-            text: 'View Group',
-            style: 'default',
-            onPress: () =>
-              navigation.replace('Group', { groupId: payload.group.id }),
-          },
-        ],
+        buttons: [{
+          text: 'View Group',
+          style: 'default',
+          onPress: () => navigation.replace('Group', { groupId: payload.group.id }),
+        }],
       });
-    } catch (e) {
+    } catch {
       showAlert({ title: 'Invalid QR', message: 'This QR code is not a valid SplitLite group.' });
       setScanned(false);
     }

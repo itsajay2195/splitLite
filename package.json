@@ -17,6 +17,7 @@
     "@react-navigation/native-stack": "^7.14.2",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-mmkv": "^2.12.2",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.24.0",

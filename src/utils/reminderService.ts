@@ -2,7 +2,7 @@ import notifee, { AndroidImportance, TriggerType } from '@notifee/react-native';
 import Realm from 'realm';
 import { calculateBalances } from './balanceCalculator';
 
-const CHANNEL_ID = 'splitlite_reminders';
+const CHANNEL_ID = 'baagam_reminders';
 const REMINDER_AFTER_DAYS = 3;
 
 // Stable notification ID per group (notifee requires string)

@@ -303,7 +303,7 @@ export default function GroupScreen() {
     }
 
     lines.push('');
-    lines.push('Shared via SplitLite 🤝');
+    lines.push('Shared via Baagam 🤝');
 
     Share.share({ message: lines.join('\n') });
   };

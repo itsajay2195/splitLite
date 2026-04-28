@@ -36,7 +36,7 @@ export default function OnboardingScreen() {
           <Text style={styles.logoText}>✂</Text>
         </View>
 
-        <Text style={styles.title}>Welcome to{'\n'}SplitLite</Text>
+        <Text style={styles.title}>Welcome to{'\n'}Baagam</Text>
         <Text style={styles.subtitle}>What should we call you?</Text>
 
         <TextInput

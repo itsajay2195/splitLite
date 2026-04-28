@@ -150,7 +150,7 @@ export default function ImportGroupScreen() {
         }],
       });
     } catch {
-      showAlert({ title: 'Invalid QR', message: 'This QR code is not a valid SplitLite group.' });
+      showAlert({ title: 'Invalid QR', message: 'This QR code is not a valid Baagam group.' });
       setScanned(false);
     }
   };

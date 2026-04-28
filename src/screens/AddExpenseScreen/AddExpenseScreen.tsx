@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Realm from 'realm';
 import { colors } from '../../theme/color';
@@ -16,6 +18,7 @@ import { useAlert } from '../../components/AlertProvider';
 import { useRealm } from '../../realm/RealmContext';
 import ScreenHeader from '../../components/ScreenHeader';
 import { logActivity } from '../../utils/activityLogger';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type SplitMode = 'equal' | 'amount' | 'percent' | 'shares';
 
@@ -52,6 +55,8 @@ export default function AddExpenseScreen() {
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
   const [splitValues, setSplitValues] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<string | null>(null);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
@@ -65,6 +70,7 @@ export default function AddExpenseScreen() {
         setDescription(existing.description);
         setSelectedMember(existing.paidByMemberId.toHexString());
         setCategory(existing.category ?? null);
+        if (existing.date) setDate(new Date(existing.date));
       }
     } else if (results.length > 0) {
       setSelectedMember(results[0]._id.toHexString());
@@ -230,7 +236,7 @@ export default function AddExpenseScreen() {
             amount: total,
             paidByMemberId: paidById,
             description: description.trim(),
-            date: new Date(),
+            date,
             category: category ?? undefined,
           });
           splits.forEach(s => {
@@ -285,6 +291,48 @@ export default function AddExpenseScreen() {
           value={description}
           onChangeText={setDescription}
         />
+
+        <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
+          <Ionicons name="calendar-outline" size={16} color={colors.text2} />
+          <Text style={styles.dateBtnText}>
+            {date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+          </Text>
+          <Ionicons name="chevron-down-outline" size={14} color={colors.text3} />
+        </TouchableOpacity>
+
+        {showDatePicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onChange={(_, selected) => {
+              setShowDatePicker(false);
+              if (selected) setDate(selected);
+            }}
+          />
+        )}
+
+        {showDatePicker && Platform.OS === 'ios' && (
+          <Modal transparent animationType="slide">
+            <View style={styles.iosPickerOverlay}>
+              <View style={styles.iosPickerSheet}>
+                <View style={styles.iosPickerBar}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.iosPickerDone}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  onChange={(_, selected) => { if (selected) setDate(selected); }}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
 
         <Text style={styles.label}>Category</Text>
         <ScrollView
@@ -622,5 +670,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '700',
     color: '#000',
+  },
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surface2,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dateBtnText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  iosPickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  iosPickerSheet: {
+    backgroundColor: colors.surface2,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  iosPickerBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  iosPickerDone: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

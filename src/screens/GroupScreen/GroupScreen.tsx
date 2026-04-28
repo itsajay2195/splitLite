@@ -7,6 +7,8 @@ import {
   Linking,
   SectionList,
   Share,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
@@ -74,6 +76,8 @@ export default function GroupScreen() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [settlements, setSettlements] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
@@ -272,6 +276,22 @@ export default function GroupScreen() {
     Linking.openURL(upiUrl).catch(() => {});
   };
 
+  const filteredExpenses = useMemo(() => {
+    let result = expenses;
+    if (filterCategory) {
+      result = result.filter((e: any) => e.category === filterCategory);
+    }
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      result = result.filter((e: any) =>
+        (e.description || '').toLowerCase().includes(q) ||
+        getMemberName(e.paidByMemberId).toLowerCase().includes(q),
+      );
+    }
+    return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expenses, searchText, filterCategory, members]);
+
   const summary = useMemo(() => {
     const totalSpent = expenses.reduce(
       (sum: number, e: any) => sum + e.amount,
@@ -317,10 +337,10 @@ export default function GroupScreen() {
 
     result.push({
       key: 'expenses',
-      title: `Expenses${expenses.length > 0 ? ` (${expenses.length})` : ''}`,
+      title: `Expenses${expenses.length > 0 ? ` (${filteredExpenses.length}${filteredExpenses.length !== expenses.length ? `/${expenses.length}` : ''})` : ''}`,
       data:
-        expenses.length > 0
-          ? expenses.map(e => ({ type: 'expense' as const, ...e }))
+        filteredExpenses.length > 0
+          ? filteredExpenses.map(e => ({ type: 'expense' as const, ...e }))
           : [{ type: 'empty' as const }],
     });
 
@@ -340,7 +360,7 @@ export default function GroupScreen() {
     });
 
     return result;
-  }, [balances, settlements, expenses, activities]);
+  }, [balances, settlements, expenses, filteredExpenses, activities]);
 
   if (!group) return null;
 
@@ -532,11 +552,57 @@ export default function GroupScreen() {
             : `${item.type}-${index}`
         }
         renderItem={renderItem}
-        renderSectionHeader={({ section }) =>
-          section.title ? (
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-          ) : null
-        }
+        renderSectionHeader={({ section }) => {
+          if (!section.title) return null;
+          if (section.key === 'expenses') {
+            return (
+              <View style={styles.expensesHeader}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <View style={styles.searchBar}>
+                  <Ionicons name="search-outline" size={15} color={colors.text3} style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search expenses..."
+                    placeholderTextColor={colors.text3}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    returnKeyType="search"
+                    clearButtonMode="while-editing"
+                  />
+                  {searchText.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchText('')}>
+                      <Ionicons name="close-circle" size={16} color={colors.text3} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryChips}
+                >
+                  <TouchableOpacity
+                    style={[styles.chip, filterCategory === null && styles.chipActive]}
+                    onPress={() => setFilterCategory(null)}
+                  >
+                    <Text style={[styles.chipText, filterCategory === null && styles.chipTextActive]}>All</Text>
+                  </TouchableOpacity>
+                  {Object.entries(CATEGORY_EMOJI).map(([cat, emoji]) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.chip, filterCategory === cat && styles.chipActive]}
+                      onPress={() => setFilterCategory(filterCategory === cat ? null : cat)}
+                    >
+                      <Text style={[styles.chipText, filterCategory === cat && styles.chipTextActive]}>
+                        {emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            );
+          }
+          return <Text style={styles.sectionTitle}>{section.title}</Text>;
+        }}
         ListHeaderComponent={
           <View style={styles.summaryCard}>
             <View style={styles.summaryTile}>
@@ -876,5 +942,54 @@ const styles = StyleSheet.create({
     color: colors.text3,
     fontSize: 11,
     marginTop: 2,
+  },
+  expensesHeader: {
+    backgroundColor: colors.bg,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    padding: 0,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  categoryChips: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  chipText: {
+    color: colors.text2,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#000',
   },
 });

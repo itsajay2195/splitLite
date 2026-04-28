@@ -37,17 +37,19 @@ export default function ShareGroupScreen() {
 
       setGroupName((group as any).name);
 
+      const payments = realm.objects('Payment').filtered('groupId == $0', objectId);
       const expenseIds = new Set([...expenses].map(e => (e as any)._id.toHexString()));
       const relevantSplits = [...splits].filter(s =>
         expenseIds.has((s as any).expenseId.toHexString()),
       );
 
       const payload = {
-        v: 1,
+        v: 2,
         group: { id: groupId, name: (group as any).name, createdAt: (group as any).createdAt.toISOString() },
         members: [...members].map((m: any) => ({ id: m._id.toHexString(), name: m.name, upiId: m.upiId ?? null })),
-        expenses: [...expenses].map((e: any) => ({ id: e._id.toHexString(), amount: e.amount, paidBy: e.paidByMemberId.toHexString(), desc: e.description, date: e.date.toISOString() })),
+        expenses: [...expenses].map((e: any) => ({ id: e._id.toHexString(), amount: e.amount, paidBy: e.paidByMemberId.toHexString(), desc: e.description, date: e.date.toISOString(), category: e.category ?? null })),
         splits: relevantSplits.map((s: any) => ({ expenseId: s.expenseId.toHexString(), memberId: s.memberId.toHexString(), amount: s.amount })),
+        payments: [...payments].map((p: any) => ({ id: p._id.toHexString(), from: p.fromMemberId.toHexString(), to: p.toMemberId.toHexString(), amount: p.amount, date: p.date.toISOString() })),
       };
 
       const json = JSON.stringify(payload);

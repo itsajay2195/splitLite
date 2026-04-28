@@ -7,18 +7,22 @@ import AddExpenseScreen from '../screens/AddExpenseScreen/AddExpenseScreen';
 import ShareGroupScreen from '../screens/ShareGroupScreen/ShareGroupScreen';
 import ImportGroupScreen from '../screens/ImportGroupScreen/ImportGroupScreen';
 import EditGroupScreen from '../screens/EditGroupScreen/EditGroupScreen';
+import OnboardingScreen from '../screens/OnboardingScreen/OnboardingScreen';
 import { NavigationContainer } from '@react-navigation/native';
+import { useUser } from '../context/UserContext';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigation() {
+  const { userName } = useUser();
+
   return (
     <NavigationContainer>
       <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
+        initialRouteName={userName ? 'Home' : 'Onboarding'}
+        screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
         <Stack.Screen name="Group" component={GroupScreen} />

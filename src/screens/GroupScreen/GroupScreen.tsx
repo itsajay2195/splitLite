@@ -22,6 +22,8 @@ import { useAlert } from '../../components/AlertProvider';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { logActivity } from '../../utils/activityLogger';
 import { timeAgo } from '../../utils/timeAgo';
+import { useUser } from '../../context/UserContext';
+import { getMyMemberId, setMyMemberId } from '../../utils/userStorage';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   food: '🍔',
@@ -78,6 +80,48 @@ export default function GroupScreen() {
   const [activities, setActivities] = useState<any[]>([]);
   const [searchText, setSearchText] = useState('');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterMine, setFilterMine] = useState(false);
+  const [myMemberId, setMyMemberIdState] = useState<string>('');
+  const { userName } = useUser();
+
+  const myMember = useMemo(
+    () => members.find(m => m._id.toHexString() === myMemberId) ?? null,
+    [members, myMemberId],
+  );
+
+  // Resolve which member is "me" in this group
+  useEffect(() => {
+    if (!members.length || !userName) return;
+
+    const stored = getMyMemberId(groupId);
+    if (stored && members.find(m => m._id.toHexString() === stored)) {
+      setMyMemberIdState(stored);
+      return;
+    }
+
+    const matches = members.filter(
+      m => m.name.trim().toLowerCase() === userName.trim().toLowerCase(),
+    );
+
+    if (matches.length === 1) {
+      setMyMemberId(groupId, matches[0]._id.toHexString());
+      setMyMemberIdState(matches[0]._id.toHexString());
+    } else if (matches.length > 1) {
+      showAlert({
+        title: 'Which one is you?',
+        message: `Multiple members named "${userName}" — pick yours.`,
+        buttons: matches.map(m => ({
+          text: m.name + (m.upiId ? ` (${m.upiId})` : ''),
+          style: 'default' as const,
+          onPress: () => {
+            setMyMemberId(groupId, m._id.toHexString());
+            setMyMemberIdState(m._id.toHexString());
+          },
+        })),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, userName, groupId]);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
@@ -278,6 +322,9 @@ export default function GroupScreen() {
 
   const filteredExpenses = useMemo(() => {
     let result = expenses;
+    if (filterMine && myMember) {
+      result = result.filter((e: any) => e.paidByMemberId.toHexString() === myMember._id.toHexString());
+    }
     if (filterCategory) {
       result = result.filter((e: any) => e.category === filterCategory);
     }
@@ -290,7 +337,7 @@ export default function GroupScreen() {
     }
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenses, searchText, filterCategory, members]);
+  }, [expenses, searchText, filterCategory, filterMine, myMember, members]);
 
   const summary = useMemo(() => {
     const totalSpent = expenses.reduce(
@@ -581,11 +628,19 @@ export default function GroupScreen() {
                   contentContainerStyle={styles.categoryChips}
                 >
                   <TouchableOpacity
-                    style={[styles.chip, filterCategory === null && styles.chipActive]}
-                    onPress={() => setFilterCategory(null)}
+                    style={[styles.chip, filterCategory === null && !filterMine && styles.chipActive]}
+                    onPress={() => { setFilterCategory(null); setFilterMine(false); }}
                   >
-                    <Text style={[styles.chipText, filterCategory === null && styles.chipTextActive]}>All</Text>
+                    <Text style={[styles.chipText, filterCategory === null && !filterMine && styles.chipTextActive]}>All</Text>
                   </TouchableOpacity>
+                  {myMember && (
+                    <TouchableOpacity
+                      style={[styles.chip, filterMine && styles.chipActive]}
+                      onPress={() => { setFilterMine(f => !f); setFilterCategory(null); }}
+                    >
+                      <Text style={[styles.chipText, filterMine && styles.chipTextActive]}>👤 Mine</Text>
+                    </TouchableOpacity>
+                  )}
                   {Object.entries(CATEGORY_EMOJI).map(([cat, emoji]) => (
                     <TouchableOpacity
                       key={cat}

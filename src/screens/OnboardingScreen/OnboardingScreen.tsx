@@ -7,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,13 +29,18 @@ export default function OnboardingScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoText}>✂</Text>
-        </View>
+        <Image
+          source={require('../../assets/baagam-icon.png')}
+          style={styles.logoMark}
+          resizeMode="contain"
+        />
 
         <Text style={styles.title}>Welcome to{'\n'}Baagam</Text>
         <Text style={styles.subtitle}>What should we call you?</Text>
@@ -74,17 +80,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 80,
+    height: 80,
     marginBottom: 32,
-  },
-  logoText: {
-    fontSize: 32,
-    color: '#000',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 36,

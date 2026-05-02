@@ -7,6 +7,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { colors } from '../theme/color';
+import { saveCrashReport } from '../utils/crashStorage';
 
 type Props = { children: React.ReactNode };
 type State = { hasError: boolean; error: Error | null };
@@ -19,7 +20,8 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Sentry/Crashlytics will hook in here later
+    saveCrashReport(error, info.componentStack ?? '');
+    // Sentry.captureException(error) goes here later
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 

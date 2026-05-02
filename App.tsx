@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { requestNotificationPermission } from './src/utils/reminderService';
 import { UserProvider } from './src/context/UserContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import CrashReporter from './src/components/CrashReporter';
 
 function App() {
   useEffect(() => {
@@ -18,6 +19,7 @@ function App() {
         <UserProvider>
           <RealmProvider>
             <AlertProvider>
+              <CrashReporter />
               <RootNavigation />
             </AlertProvider>
           </RealmProvider>

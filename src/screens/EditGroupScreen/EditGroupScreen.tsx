@@ -128,7 +128,7 @@ export default function EditGroupScreen() {
           logActivity(realm, gId, 'member_added', `${m.name} joined the group`);
         });
       });
-      navigation.goBack();
+      navigation.navigate('Group', { groupId, _refresh: Date.now() });
     } catch {
       showAlert({ title: 'Error', message: 'Could not save changes. Please try again.' });
     }

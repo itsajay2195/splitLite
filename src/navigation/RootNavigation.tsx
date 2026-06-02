@@ -14,7 +14,10 @@ import { useUser } from '../context/UserContext';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigation() {
-  const { userName } = useUser();
+  const { userName, userLoaded } = useUser();
+
+  console.log('userNAme>>>', userName);
+  if (!userLoaded) return null;
 
   return (
     <NavigationContainer>

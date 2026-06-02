@@ -1,40 +1,20 @@
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
-const KEY = 'user_name';
-
-let _storage: MMKV | null = null;
-
-function storage(): MMKV {
-  if (!_storage) {
-    _storage = new MMKV({ id: 'splitlite-user' });
-  }
-  return _storage;
-}
+const storage = createMMKV({ id: 'baagam-storage' });
+const USER_NAME_KEY = 'user_name';
 
 export function getUserName(): string {
-  try {
-    return storage().getString(KEY) ?? '';
-  } catch {
-    return '';
-  }
+  return storage.getString(USER_NAME_KEY) ?? '';
 }
 
 export function setUserName(name: string): void {
-  try {
-    storage().set(KEY, name.trim());
-  } catch {}
+  storage.set(USER_NAME_KEY, name.trim());
 }
 
 export function getMyMemberId(groupId: string): string {
-  try {
-    return storage().getString(`my_member_${groupId}`) ?? '';
-  } catch {
-    return '';
-  }
+  return storage.getString(`my_member_${groupId}`) ?? '';
 }
 
 export function setMyMemberId(groupId: string, memberId: string): void {
-  try {
-    storage().set(`my_member_${groupId}`, memberId);
-  } catch {}
+  storage.set(`my_member_${groupId}`, memberId);
 }

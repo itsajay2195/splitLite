@@ -29,10 +29,14 @@ export default function ImportGroupScreen() {
   useEffect(() => {
     Camera.requestCameraPermission().then(status => {
       setHasPermission(status === 'granted');
-    });
+    }).catch(() => setHasPermission(false));
   }, []);
 
-  const applyPayload = (payload: any, existingId: Realm.BSON.ObjectId, isSyncing: boolean) => {
+  const applyPayload = (
+    payload: any,
+    existingId: Realm.BSON.ObjectId,
+    isSyncing: boolean,
+  ) => {
     realm.write(() => {
       if (!isSyncing) {
         realm.create('Group', {
@@ -101,9 +105,11 @@ export default function ImportGroupScreen() {
 
   const importGroup = (json: string) => {
     try {
+      console.log('[Import] importGroup called, json length:', json.length);
       const payload = JSON.parse(json);
+      console.log('[Import] parsed ok, v:', payload.v, 'group:', payload.group?.name);
 
-      if ((!payload.v || payload.v < 1) || !payload.group || !payload.members) {
+      if (!payload.v || payload.v < 1 || !payload.group || !payload.members) {
         throw new Error('Invalid QR code.');
       }
 
@@ -116,7 +122,11 @@ export default function ImportGroupScreen() {
           title: 'Sync group?',
           message: `"${payload.group.name}" is already in your groups. Sync to get the latest expenses and payments from this QR?`,
           buttons: [
-            { text: 'Cancel', style: 'cancel', onPress: () => setScanned(false) },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setScanned(false),
+            },
             {
               text: 'Sync',
               style: 'default',
@@ -125,11 +135,16 @@ export default function ImportGroupScreen() {
                 showAlert({
                   title: 'Synced!',
                   message: `"${payload.group.name}" is up to date.`,
-                  buttons: [{
-                    text: 'View Group',
-                    style: 'default',
-                    onPress: () => navigation.replace('Group', { groupId: payload.group.id }),
-                  }],
+                  buttons: [
+                    {
+                      text: 'View Group',
+                      style: 'default',
+                      onPress: () =>
+                        navigation.replace('Group', {
+                          groupId: payload.group.id,
+                        }),
+                    },
+                  ],
                 });
               },
             },
@@ -143,14 +158,20 @@ export default function ImportGroupScreen() {
       showAlert({
         title: 'Imported!',
         message: `"${payload.group.name}" was added to your groups.`,
-        buttons: [{
-          text: 'View Group',
-          style: 'default',
-          onPress: () => navigation.replace('Group', { groupId: payload.group.id }),
-        }],
+        buttons: [
+          {
+            text: 'View Group',
+            style: 'default',
+            onPress: () =>
+              navigation.replace('Group', { groupId: payload.group.id }),
+          },
+        ],
       });
     } catch {
-      showAlert({ title: 'Invalid QR', message: 'This QR code is not a valid Baagam group.' });
+      showAlert({
+        title: 'Invalid QR',
+        message: 'This QR code is not a valid Baagam group.',
+      });
       setScanned(false);
     }
   };
@@ -158,7 +179,9 @@ export default function ImportGroupScreen() {
   const codeScanner = useCodeScanner({
     codeTypes: ['qr'],
     onCodeScanned: codes => {
+      console.log('[Scanner] onCodeScanned fired, count:', codes.length, 'scanned:', scanned);
       if (scanned || !codes[0]?.value) return;
+      console.log('[Scanner] value length:', codes[0].value.length, 'preview:', codes[0].value.slice(0, 80));
       setScanned(true);
       importGroup(codes[0].value);
     },
@@ -175,7 +198,9 @@ export default function ImportGroupScreen() {
   if (!hasPermission) {
     return (
       <View style={styles.center}>
-        <Text style={styles.permText}>Camera permission is required to scan QR codes.</Text>
+        <Text style={styles.permText}>
+          Camera permission is required to scan QR codes.
+        </Text>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
@@ -220,7 +245,7 @@ export default function ImportGroupScreen() {
         </View>
 
         <Text style={styles.hint}>
-          {scanned ? 'Processing...' : 'Point at a SplitLite QR code'}
+          {scanned ? 'Processing...' : 'Point at a Baagam QR code'}
         </Text>
       </View>
     </View>

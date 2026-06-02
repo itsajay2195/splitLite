@@ -39,25 +39,49 @@ export function useAlert() {
   return ctx;
 }
 
-export default function AlertProvider({ children }: { children: React.ReactNode }) {
+export default function AlertProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [visible, setVisible] = useState(false);
   const [options, setOptions] = useState<AlertOptions>({ title: '' });
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.92)).current;
 
-  const showAlert = useCallback((opts: AlertOptions) => {
-    setOptions(opts);
-    setVisible(true);
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 20, stiffness: 260 }),
-    ]).start();
-  }, [opacity, scale]);
+  const showAlert = useCallback(
+    (opts: AlertOptions) => {
+      setOptions(opts);
+      setVisible(true);
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 260,
+        }),
+      ]).start();
+    },
+    [opacity, scale],
+  );
 
   const dismiss = (onPress?: () => void) => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 140, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 0.94, duration: 140, useNativeDriver: true }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.94,
+        duration: 140,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       setVisible(false);
       opacity.setValue(0);
@@ -66,12 +90,19 @@ export default function AlertProvider({ children }: { children: React.ReactNode 
     });
   };
 
-  const buttons: AlertButton[] = options.buttons ?? [{ text: 'OK', style: 'default' }];
+  const buttons: AlertButton[] = options.buttons ?? [
+    { text: 'OK', style: 'default' },
+  ];
 
   return (
     <AlertContext.Provider value={{ showAlert }}>
       {children}
-      <Modal transparent visible={visible} animationType="none" statusBarTranslucent>
+      <Modal
+        transparent
+        visible={visible}
+        animationType="none"
+        statusBarTranslucent
+      >
         <Animated.View style={[styles.backdrop, { opacity }]}>
           <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
             <Text style={styles.title}>{options.title}</Text>
@@ -80,7 +111,9 @@ export default function AlertProvider({ children }: { children: React.ReactNode 
               <Text style={styles.message}>{options.message}</Text>
             ) : null}
 
-            <View style={[styles.buttonRow, buttons.length > 2 && styles.buttonCol]}>
+            <View
+              style={[styles.buttonRow, buttons.length > 2 && styles.buttonCol]}
+            >
               {buttons.map((btn, i) => (
                 <TouchableOpacity
                   key={i}
@@ -89,7 +122,9 @@ export default function AlertProvider({ children }: { children: React.ReactNode 
                     buttons.length === 2 && styles.buttonHalf,
                     btn.style === 'cancel' && styles.buttonCancel,
                     btn.style === 'destructive' && styles.buttonDestructive,
-                    btn.style !== 'cancel' && btn.style !== 'destructive' && styles.buttonPrimary,
+                    btn.style !== 'cancel' &&
+                      btn.style !== 'destructive' &&
+                      styles.buttonPrimary,
                   ]}
                   onPress={() => dismiss(btn.onPress)}
                   activeOpacity={0.75}
@@ -98,8 +133,11 @@ export default function AlertProvider({ children }: { children: React.ReactNode 
                     style={[
                       styles.buttonText,
                       btn.style === 'cancel' && styles.buttonTextCancel,
-                      btn.style === 'destructive' && styles.buttonTextDestructive,
-                      btn.style !== 'cancel' && btn.style !== 'destructive' && styles.buttonTextPrimary,
+                      btn.style === 'destructive' &&
+                        styles.buttonTextDestructive,
+                      btn.style !== 'cancel' &&
+                        btn.style !== 'destructive' &&
+                        styles.buttonTextPrimary,
                     ]}
                   >
                     {btn.text}
@@ -153,8 +191,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   button: {
-    flex: 1,
-    paddingVertical: 13,
+    padding: 13,
     borderRadius: 14,
     alignItems: 'center',
   },

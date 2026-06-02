@@ -70,7 +70,7 @@ export default function GroupScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { showAlert } = useAlert();
-  const { groupId } = route.params;
+  const { groupId, _refresh } = route.params;
 
   const [group, setGroup] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
@@ -120,13 +120,12 @@ export default function GroupScreen() {
         })),
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [members, userName, groupId]);
 
   useEffect(() => {
     const objectId = new Realm.BSON.ObjectId(groupId);
 
-    const groupData = realm.objectForPrimaryKey('Group', objectId);
     const memberResults = realm
       .objects('Member')
       .filtered('groupId == $0', objectId);
@@ -168,8 +167,8 @@ export default function GroupScreen() {
     const refreshActivities = () =>
       setActivities([...activityResults].slice(0, 30));
 
-    setGroup(groupData);
-    setMembers([...memberResults]);
+    setGroup(realm.objectForPrimaryKey('Group', objectId));
+    setMembers([...memberResults].map(m => ({ _id: m._id, name: m.name, upiId: m.upiId ?? '' })));
     refresh();
     refreshActivities();
 
@@ -182,7 +181,7 @@ export default function GroupScreen() {
       paymentResults.removeAllListeners();
       activityResults.removeAllListeners();
     };
-  }, [groupId, realm]);
+  }, [groupId, realm, _refresh]);
 
   const handleExpenseTap = (expense: any) => {
     showAlert({
@@ -278,7 +277,11 @@ export default function GroupScreen() {
     lines.push(`📊 ${group.name} — Summary`);
     lines.push('');
     lines.push(`💰 Total spent: ₹${summary.totalSpent.toFixed(0)}`);
-    lines.push(`👥 ${members.length} ${members.length === 1 ? 'member' : 'members'} · ${summary.expenseCount} ${summary.expenseCount === 1 ? 'expense' : 'expenses'}`);
+    lines.push(
+      `👥 ${members.length} ${members.length === 1 ? 'member' : 'members'} · ${
+        summary.expenseCount
+      } ${summary.expenseCount === 1 ? 'expense' : 'expenses'}`,
+    );
 
     if (balances.length > 0) {
       lines.push('');
@@ -289,7 +292,9 @@ export default function GroupScreen() {
         } else if (b.netBalance > 0) {
           lines.push(`  • ${b.name} gets ₹${b.netBalance.toFixed(2)}`);
         } else {
-          lines.push(`  • ${b.name} owes ₹${Math.abs(b.netBalance).toFixed(2)}`);
+          lines.push(
+            `  • ${b.name} owes ₹${Math.abs(b.netBalance).toFixed(2)}`,
+          );
         }
       });
     }
@@ -323,20 +328,24 @@ export default function GroupScreen() {
   const filteredExpenses = useMemo(() => {
     let result = expenses;
     if (filterMine && myMember) {
-      result = result.filter((e: any) => e.paidByMemberId.toHexString() === myMember._id.toHexString());
+      result = result.filter(
+        (e: any) =>
+          e.paidByMemberId.toHexString() === myMember._id.toHexString(),
+      );
     }
     if (filterCategory) {
       result = result.filter((e: any) => e.category === filterCategory);
     }
     if (searchText.trim()) {
       const q = searchText.trim().toLowerCase();
-      result = result.filter((e: any) =>
-        (e.description || '').toLowerCase().includes(q) ||
-        getMemberName(e.paidByMemberId).toLowerCase().includes(q),
+      result = result.filter(
+        (e: any) =>
+          (e.description || '').toLowerCase().includes(q) ||
+          getMemberName(e.paidByMemberId).toLowerCase().includes(q),
       );
     }
     return result;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expenses, searchText, filterCategory, filterMine, myMember, members]);
 
   const summary = useMemo(() => {
@@ -384,7 +393,15 @@ export default function GroupScreen() {
 
     result.push({
       key: 'expenses',
-      title: `Expenses${expenses.length > 0 ? ` (${filteredExpenses.length}${filteredExpenses.length !== expenses.length ? `/${expenses.length}` : ''})` : ''}`,
+      title: `Expenses${
+        expenses.length > 0
+          ? ` (${filteredExpenses.length}${
+              filteredExpenses.length !== expenses.length
+                ? `/${expenses.length}`
+                : ''
+            })`
+          : ''
+      }`,
       data:
         filteredExpenses.length > 0
           ? filteredExpenses.map(e => ({ type: 'expense' as const, ...e }))
@@ -606,7 +623,12 @@ export default function GroupScreen() {
               <View style={styles.expensesHeader}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
                 <View style={styles.searchBar}>
-                  <Ionicons name="search-outline" size={15} color={colors.text3} style={styles.searchIcon} />
+                  <Ionicons
+                    name="search-outline"
+                    size={15}
+                    color={colors.text3}
+                    style={styles.searchIcon}
+                  />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search expenses..."
@@ -618,7 +640,11 @@ export default function GroupScreen() {
                   />
                   {searchText.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchText('')}>
-                      <Ionicons name="close-circle" size={16} color={colors.text3} />
+                      <Ionicons
+                        name="close-circle"
+                        size={16}
+                        color={colors.text3}
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -628,26 +654,63 @@ export default function GroupScreen() {
                   contentContainerStyle={styles.categoryChips}
                 >
                   <TouchableOpacity
-                    style={[styles.chip, filterCategory === null && !filterMine && styles.chipActive]}
-                    onPress={() => { setFilterCategory(null); setFilterMine(false); }}
+                    style={[
+                      styles.chip,
+                      filterCategory === null &&
+                        !filterMine &&
+                        styles.chipActive,
+                    ]}
+                    onPress={() => {
+                      setFilterCategory(null);
+                      setFilterMine(false);
+                    }}
                   >
-                    <Text style={[styles.chipText, filterCategory === null && !filterMine && styles.chipTextActive]}>All</Text>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        filterCategory === null &&
+                          !filterMine &&
+                          styles.chipTextActive,
+                      ]}
+                    >
+                      All
+                    </Text>
                   </TouchableOpacity>
                   {myMember && (
                     <TouchableOpacity
                       style={[styles.chip, filterMine && styles.chipActive]}
-                      onPress={() => { setFilterMine(f => !f); setFilterCategory(null); }}
+                      onPress={() => {
+                        setFilterMine(f => !f);
+                        setFilterCategory(null);
+                      }}
                     >
-                      <Text style={[styles.chipText, filterMine && styles.chipTextActive]}>👤 Mine</Text>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          filterMine && styles.chipTextActive,
+                        ]}
+                      >
+                        👤 Mine
+                      </Text>
                     </TouchableOpacity>
                   )}
                   {Object.entries(CATEGORY_EMOJI).map(([cat, emoji]) => (
                     <TouchableOpacity
                       key={cat}
-                      style={[styles.chip, filterCategory === cat && styles.chipActive]}
-                      onPress={() => setFilterCategory(filterCategory === cat ? null : cat)}
+                      style={[
+                        styles.chip,
+                        filterCategory === cat && styles.chipActive,
+                      ]}
+                      onPress={() =>
+                        setFilterCategory(filterCategory === cat ? null : cat)
+                      }
                     >
-                      <Text style={[styles.chipText, filterCategory === cat && styles.chipTextActive]}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          filterCategory === cat && styles.chipTextActive,
+                        ]}
+                      >
                         {emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -697,9 +760,18 @@ export default function GroupScreen() {
               <Text style={styles.summaryLabel}>Status</Text>
             </View>
             <View style={styles.summaryDivider} />
-            <TouchableOpacity style={styles.summaryTile} onPress={shareGroupSummary}>
-              <Ionicons name="share-social-outline" size={20} color={colors.accent} />
-              <Text style={[styles.summaryLabel, { color: colors.accent }]}>Share</Text>
+            <TouchableOpacity
+              style={styles.summaryTile}
+              onPress={shareGroupSummary}
+            >
+              <Ionicons
+                name="share-social-outline"
+                size={20}
+                color={colors.accent}
+              />
+              <Text style={[styles.summaryLabel, { color: colors.accent }]}>
+                Share
+              </Text>
             </TouchableOpacity>
           </View>
         }

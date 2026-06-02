@@ -23,7 +23,8 @@ export default function OnboardingScreen() {
   const handleContinue = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    await setUserName(trimmed);
+    console.log('trmmmed', trimmed);
+    setUserName(trimmed);
     navigation.replace('Home');
   };
 

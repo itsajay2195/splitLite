@@ -94,7 +94,7 @@ export default function ShareGroupScreen() {
                 <View style={styles.qrWrapper}>
                   <QRCode
                     value={qrData}
-                    size={240}
+                    size={280}
                     backgroundColor={colors.surface2}
                     color={colors.text}
                   />

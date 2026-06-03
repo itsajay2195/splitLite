@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build & upload to Play Store
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/splitlite-release.keystore
+
+      - name: Build release AAB
+        run: |
+          cd android && ./gradlew bundleRelease \
+            -PSPLITLITE_UPLOAD_STORE_FILE=splitlite-release.keystore \
+            -PSPLITLITE_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }} \
+            -PSPLITLITE_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }} \
+            -PSPLITLITE_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload to Play Store (internal track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+          packageName: com.baagam
+          releaseFiles: android/app/build/outputs/bundle/release/*.aab
+          track: internal
+          status: completed

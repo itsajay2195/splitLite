@@ -1,4 +1,5 @@
-import Realm from 'realm';
+import { db } from '../firebase/firestore';
+import { getCurrentUser } from './firebaseAuth';
 
 export type ActivityType =
   | 'expense_added'
@@ -8,18 +9,11 @@ export type ActivityType =
   | 'member_added'
   | 'member_removed';
 
-// Must be called inside an existing realm.write() block
-export function logActivity(
-  realm: Realm,
-  groupId: Realm.BSON.ObjectId,
-  type: ActivityType,
-  description: string,
-) {
-  realm.create('ActivityLog', {
-    _id: new Realm.BSON.ObjectId(),
-    groupId,
+export function logActivity(groupId: string, type: ActivityType, text: string): void {
+  if (!getCurrentUser()) return;
+  db.collection('groups').doc(groupId).collection('activities').add({
     type,
-    description,
-    date: new Date(),
-  });
+    text,
+    createdAt: new Date(),
+  }).catch(() => {});
 }

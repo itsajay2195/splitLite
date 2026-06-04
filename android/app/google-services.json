@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "288483077004",
+    "project_id": "baagam-web",
+    "storage_bucket": "baagam-web.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288483077004:android:cd920d4b5625eb64c104a9",
+        "android_client_info": {
+          "package_name": "com.baagam"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "288483077004-1pf63abacsijh0sj3abbjcj0hl69r2vd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxO64aTgvprUU08fmTzCAiLVzJ9DnzdDA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "288483077004-1pf63abacsijh0sj3abbjcj0hl69r2vd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

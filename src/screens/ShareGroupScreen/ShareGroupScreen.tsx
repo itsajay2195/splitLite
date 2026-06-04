@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Realm from 'realm';
 import QRCode from 'react-native-qrcode-svg';
@@ -32,16 +26,13 @@ export default function ShareGroupScreen() {
       const members = realm.objects('Member').filtered('groupId == $0', objectId);
       const expenses = realm.objects('Expense').filtered('groupId == $0', objectId);
       const splits = realm.objects('ExpenseSplit');
+      const payments = realm.objects('Payment').filtered('groupId == $0', objectId);
 
       if (!group) { setError('Group not found.'); return; }
-
       setGroupName((group as any).name);
 
-      const payments = realm.objects('Payment').filtered('groupId == $0', objectId);
       const expenseIds = new Set([...expenses].map(e => (e as any)._id.toHexString()));
-      const relevantSplits = [...splits].filter(s =>
-        expenseIds.has((s as any).expenseId.toHexString()),
-      );
+      const relevantSplits = [...splits].filter(s => expenseIds.has((s as any).expenseId.toHexString()));
 
       const payload = {
         v: 2,
@@ -53,8 +44,8 @@ export default function ShareGroupScreen() {
       };
 
       const json = JSON.stringify(payload);
-      if (encodeURIComponent(json).replace(/%[0-9A-F]{2}/gi, '_').length > MAX_QR_BYTES) {
-        setError(`Group data is too large for a single QR code (${[...expenses].length} expenses). Try exporting a smaller group.`);
+      if (json.length > MAX_QR_BYTES) {
+        setError(`Group data is too large for a single QR code (${[...expenses].length} expenses).`);
         return;
       }
       setQrData(json);
@@ -65,45 +56,20 @@ export default function ShareGroupScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Share Group"
-        subtitle={groupName || undefined}
-        backLabel={groupName || 'Back'}
-        onBack={() => navigation.goBack()}
-      />
-
-      <FlatList
-        data={[]}
-        keyExtractor={() => ''}
-        renderItem={null}
-        contentContainerStyle={styles.content}
+      <ScreenHeader title="Share Group" subtitle={groupName || undefined} backLabel={groupName || 'Back'} onBack={() => navigation.goBack()} />
+      <FlatList data={[]} keyExtractor={() => ''} renderItem={null} contentContainerStyle={styles.content}
         ListHeaderComponent={
           <>
-            {!qrData && !error && (
-              <ActivityIndicator color={colors.accent} style={styles.loader} />
-            )}
-
-            {error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
+            {!qrData && !error && <ActivityIndicator color={colors.accent} style={styles.loader} />}
+            {error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
             {qrData && (
               <>
                 <View style={styles.qrWrapper}>
-                  <QRCode
-                    value={qrData}
-                    size={280}
-                    backgroundColor={colors.surface2}
-                    color={colors.text}
-                  />
+                  <QRCode value={qrData} size={280} backgroundColor={colors.surface2} color={colors.text} />
                 </View>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoTitle}>How to use</Text>
-                  <Text style={styles.infoText}>
-                    Let a friend scan this QR code in their Baagam app to import the full group — members, expenses, and balances — with no internet required.
-                  </Text>
+                  <Text style={styles.infoText}>Let a friend scan this QR code in their Baagam app to import the full group — members, expenses, and balances — with no internet required.</Text>
                 </View>
               </>
             )}
@@ -115,56 +81,13 @@ export default function ShareGroupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  content: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  loader: {
-    marginTop: 40,
-  },
-  qrWrapper: {
-    backgroundColor: colors.surface2,
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 32,
-    marginTop: 20,
-  },
-  infoBox: {
-    backgroundColor: colors.surface2,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    width: '100%',
-  },
-  infoTitle: {
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  infoText: {
-    color: colors.text2,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  errorBox: {
-    backgroundColor: 'rgba(255,74,107,0.1)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    marginTop: 32,
-    width: '100%',
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 20, alignItems: 'center' },
+  loader: { marginTop: 40 },
+  qrWrapper: { backgroundColor: colors.surface2, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: colors.border, marginBottom: 32, marginTop: 20 },
+  infoBox: { backgroundColor: colors.surface2, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, width: '100%' },
+  infoTitle: { color: colors.text, fontWeight: '700', marginBottom: 6 },
+  infoText: { color: colors.text2, fontSize: 13, lineHeight: 20 },
+  errorBox: { backgroundColor: 'rgba(255,74,107,0.1)', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.danger, marginTop: 32, width: '100%' },
+  errorText: { color: colors.danger, fontSize: 14, lineHeight: 20 },
 });
